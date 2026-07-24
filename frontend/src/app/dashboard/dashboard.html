@@ -1,0 +1,198 @@
+<div class="flex h-dvh overflow-hidden bg-unibe-bg font-sans text-slate-800">
+  @if (sidebarOpen()) {
+    <button type="button" (click)="closeSidebar()" class="fixed inset-0 z-30 bg-slate-950/35 lg:hidden" aria-label="Cerrar menú de navegación"></button>
+  }
+
+  <!-- Sidebar -->
+  <aside
+    class="fixed inset-y-0 left-0 z-40 flex h-dvh w-64 shrink-0 -translate-x-full flex-col justify-between overflow-y-auto border-r border-unibe-blue-hover bg-unibe-blue shadow-lg transition-transform duration-200 lg:static lg:translate-x-0 lg:shadow-sm"
+    [class.translate-x-0]="sidebarOpen()"
+  >
+    <div>
+      <!-- Brand Logo con Azul UNIBE -->
+      <div class="p-5 min-h-[92px] border-b border-white/10 flex items-center gap-3 bg-unibe-blue text-white relative">
+        <div class="absolute inset-x-0 bottom-0 h-1 bg-unibe-gold"></div>
+        <img src="/image/logo.png" alt="Universidad Iberoamericana del Ecuador" class="w-14 h-14 object-contain shrink-0" />
+        <div class="min-w-0">
+          <h2 class="text-xl font-bold tracking-wider">PRAVI</h2>
+          <p class="text-[11px] text-white/75 font-medium leading-tight mt-1">Universidad Iberoamericana del Ecuador</p>
+        </div>
+        <button type="button" (click)="closeSidebar()" title="Cerrar menú" class="ml-auto p-2 text-white/80 hover:text-white hover:bg-white/10 rounded-lg lg:hidden" aria-label="Cerrar menú">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" /></svg>
+        </button>
+      </div>
+
+      <!-- Navigation Menu -->
+      <nav class="p-4 space-y-4 bg-unibe-blue">
+        @for (grupo of getMenuGroups(); track grupo.titulo) {
+          <div class="space-y-1">
+            @if (grupo.titulo) {
+              <div class="px-4 pb-1 text-[9px] font-bold uppercase tracking-widest text-unibe-gold/80">{{ grupo.titulo }}</div>
+            }
+            @for (item of grupo.items; track item.route) {
+          <a
+            [routerLink]="item.route"
+            (click)="closeSidebar()"
+            routerLinkActive="!bg-unibe-gold !text-unibe-blue font-semibold border-l-4 border-white"
+            class="flex items-center gap-3 px-4 py-3 text-white/75 hover:text-white hover:bg-white/10 rounded-lg transition-all font-medium text-xs border-l-4 border-transparent"
+          >
+            <!-- SVG Icon Selection -->
+            @if (item.icon === 'home') {
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="m2.25 12 8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" /></svg>
+            } @else if (item.icon === 'users') {
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z" /></svg>
+            } @else if (item.icon === 'academic') {
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M4.26 10.147a60.438 60.438 0 0 0-.491 6.347A48.62 48.62 0 0 1 12 20.904a48.62 48.62 0 0 1 8.232-4.41 60.46 60.46 0 0 0-.491-6.347m-15.482 0a50.57 50.57 0 0 0-2.658-.813A59.906 59.906 0 0 1 12 3.493a59.902 59.902 0 0 1 10.399 5.84c-.896.248-1.783.52-2.658.814m-15.482 0A50.717 50.717 0 0 1 12 13.489a50.702 50.702 0 0 1 7.74-3.342M12 13.49v.01" /></svg>
+            } @else if (item.icon === 'upload') {
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M12 16.5V9.75m0 0 3 3m-3-3-3 3M6.75 19.5h10.5a3 3 0 0 0 .48-5.961A5.25 5.25 0 0 0 7.52 12.9 3.75 3.75 0 0 0 6.75 19.5Z" /></svg>
+            } @else if (item.icon === 'chart') {
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125V21H3v-7.875ZM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h-4.5V8.625ZM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125V21h-4.5V4.125Z" /></svg>
+            } @else if (item.icon === 'office') {
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 21h16.5M4.5 3h15M5.25 3v18m13.5-18v18M9 6.75h1.5m-1.5 3h1.5m-1.5 3h1.5m3-6H15m-1.5 3H15m-1.5 3H15M9 21v-3.375c0-.621.504-1.125 1.125-1.125h3.75c.621 0 1.125.504 1.125 1.125V21" /></svg>
+            } @else if (item.icon === 'heart') {
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12Z" /></svg>
+            } @else if (item.icon === 'calendar') {
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5" /></svg>
+            } @else if (item.icon === 'clipboard') {
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5.25H6.75A2.25 2.25 0 0 0 4.5 7.5v12a2.25 2.25 0 0 0 2.25 2.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-12a2.25 2.25 0 0 0-2.25-2.25H15m-6 0A2.25 2.25 0 0 1 11.25 3h1.5A2.25 2.25 0 0 1 15 5.25m-6 0A2.25 2.25 0 0 0 11.25 7.5h1.5A2.25 2.25 0 0 0 15 5.25m-6 8.25 2.25 2.25L15 12" /></svg>
+            } @else if (item.icon === 'briefcase') {
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M20.25 14.15v4.25c0 .621-.504 1.125-1.125 1.125H4.875A1.125 1.125 0 0 1 3.75 18.4V14.15m16.5 0c.513 0 .956-.345 1.086-.843.14-.539.214-1.107.214-1.692 0-2.43-.81-4.667-2.216-6.46A2.25 2.25 0 0 0 17.58 4.5H6.42a2.25 2.25 0 0 0-1.722.755c-1.406 1.793-2.216 4.03-2.216 6.46 0 .585.074 1.153.214 1.692.13.498.573.843 1.086.843m16.5 0H3.75m16.5 0a2.25 2.25 0 0 1-2.247 2.25H5.497a2.25 2.25 0 0 1-2.247-2.25m13.5-12.15V3.375m0 0h-6.75m6.75 0v1.5m-6.75-1.5V1.5m0 0h6.75m-6.75 0v1.5m6.75 1.5H15.75" /></svg>
+            } @else if (item.icon === 'envelope') {
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75" /></svg>
+            } @else {
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M13.19 8.688a4.5 4.5 0 0 1 1.242 7.244l-4.5 4.5a4.5 4.5 0 0 1-6.364-6.364l1.757-1.757m13.35-.622 1.757-1.757a4.5 4.5 0 0 0-6.364-6.364l-4.5 4.5a4.5 4.5 0 0 0 1.242 7.244" /></svg>
+            }
+            <span>{{ item.label }}</span>
+          </a>
+            }
+          </div>
+        }
+      </nav>
+    </div>
+
+    <!-- User Profile Footer -->
+    <div class="p-4 border-t border-white/10 bg-unibe-blue-hover/30">
+      <div class="flex items-center gap-3 p-2 mb-3 bg-white/10 rounded-lg border border-white/15">
+        <div class="w-10 h-10 rounded-lg bg-unibe-gold border border-unibe-gold flex items-center justify-center text-unibe-blue font-bold">
+          {{ userName().substring(0, 1) }}
+        </div>
+        <div class="overflow-hidden">
+          <h4 class="text-xs font-semibold text-white truncate">{{ userName() }}</h4>
+          <span class="text-[10px] text-white/60 truncate block font-medium uppercase tracking-wide">{{ userRole() }}</span>
+          @if (userRole() === 'COORDINADOR') {
+            <span class="text-[9px] text-unibe-gold truncate block mt-0.5" [title]="getCoordinatorScope()">Alcance: {{ getCoordinatorScope() }}</span>
+          }
+        </div>
+      </div>
+      <button
+        (click)="logout()"
+        class="w-full py-2 px-3 bg-red-700 hover:bg-red-800 text-white text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-2 border border-red-600"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15M12 9l-3 3m0 0 3 3m-3-3h12.75" />
+        </svg>
+        <span>Salir</span>
+      </button>
+    </div>
+  </aside>
+
+  <!-- Main Content Area -->
+  <div class="flex h-dvh w-full min-w-0 flex-1 flex-col overflow-y-auto bg-unibe-bg">
+    <header class="h-[70px] px-3 sm:px-6 bg-white border-b border-slate-200 flex items-center justify-between shrink-0 shadow-sm sticky top-0 z-20">
+      <div class="flex items-center gap-2 min-w-0">
+        <button type="button" (click)="toggleSidebar()" title="Abrir menú" class="shrink-0 p-2 text-slate-600 hover:text-unibe-blue hover:bg-slate-100 rounded-lg lg:hidden" aria-label="Abrir menú de navegación">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" /></svg>
+        </button>
+        <div class="min-w-0">
+          <h1 class="text-sm sm:text-base font-bold text-unibe-blue tracking-wide uppercase truncate">
+            <span class="hidden sm:inline">Gestión de Prácticas y Vinculación</span>
+            <span class="sm:hidden">PRAVI</span>
+          </h1>
+          <p class="hidden sm:block text-[10px] sm:text-xs text-slate-500 font-medium mt-0.5 truncate">Universidad Iberoamericana del Ecuador</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-4">
+        <!-- Campana de notificaciones -->
+        <div class="relative">
+          <button
+            type="button"
+            (click)="toggleNotificaciones()"
+            class="relative p-2 rounded-lg text-slate-500 hover:text-unibe-blue hover:bg-slate-100 border border-transparent hover:border-slate-200 transition-all"
+            aria-label="Notificaciones"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0" />
+            </svg>
+            @if (noLeidasCount() > 0) {
+              <span class="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 flex items-center justify-center bg-red-600 text-white text-[10px] font-bold rounded-full border-2 border-white">
+                {{ noLeidasCount() > 99 ? '99+' : noLeidasCount() }}
+              </span>
+            }
+          </button>
+
+          @if (showNotificaciones()) {
+            <!-- Backdrop para cerrar al hacer clic fuera -->
+            <div class="fixed inset-0 z-40" (click)="toggleNotificaciones()"></div>
+
+            <!-- Panel desplegable -->
+            <div class="absolute right-0 top-full mt-2 w-96 max-w-[calc(100vw-2rem)] bg-white border border-slate-200 rounded-xl shadow-xl z-50 overflow-hidden">
+              <div class="px-4 py-3 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
+                <h3 class="text-xs font-bold text-unibe-blue uppercase tracking-wider">Notificaciones</h3>
+                @if (noLeidasCount() > 0) {
+                  <button
+                    type="button"
+                    (click)="marcarTodasLeidas()"
+                    class="text-[10px] font-bold text-unibe-blue hover:underline"
+                  >
+                    Marcar todas como leídas
+                  </button>
+                }
+              </div>
+
+              <div class="max-h-96 overflow-y-auto">
+                @if (loadingNotificaciones()) {
+                  <div class="px-4 py-8 text-center text-xs text-slate-400 font-medium">Cargando notificaciones...</div>
+                } @else if (notificaciones().length === 0) {
+                  <div class="px-4 py-8 text-center text-xs text-slate-400 font-medium">No tienes notificaciones.</div>
+                } @else {
+                  @for (n of notificaciones(); track n.id) {
+                    <button
+                      type="button"
+                      (click)="onNotificacionClick(n)"
+                      class="w-full text-left px-4 py-3 border-b border-slate-100 last:border-b-0 hover:bg-slate-50 transition-colors flex gap-3 items-start"
+                      [class.bg-unibe-blue/5]="!n.leida"
+                    >
+                      <span
+                        class="mt-1.5 w-2 h-2 rounded-full shrink-0"
+                        [class.bg-unibe-blue]="!n.leida"
+                        [class.bg-slate-200]="n.leida"
+                      ></span>
+                      <span class="min-w-0">
+                        <span class="block text-xs text-slate-800 truncate" [class.font-bold]="!n.leida" [class.font-medium]="n.leida">
+                          {{ n.titulo }}
+                        </span>
+                        <span class="block text-[11px] text-slate-500 leading-snug mt-0.5">{{ n.mensaje }}</span>
+                        <span class="block text-[10px] text-slate-400 font-medium mt-1">{{ fechaNotificacion(n.fechaCreacion) }}</span>
+                      </span>
+                    </button>
+                  }
+                }
+              </div>
+            </div>
+          }
+        </div>
+
+        <div class="hidden sm:block text-[10px] text-slate-500 font-bold bg-slate-100 border border-slate-200 px-3 py-1.5 rounded-full uppercase tracking-wider">
+          Periodo Académico {{ periodoAcademico }}
+        </div>
+      </div>
+    </header>
+
+    <main class="p-3 sm:p-6 flex-1 min-h-0">
+      <router-outlet></router-outlet>
+    </main>
+  </div>
+</div>
+
+<app-confirm-modal></app-confirm-modal>
+<app-inactividad-modal></app-inactividad-modal>

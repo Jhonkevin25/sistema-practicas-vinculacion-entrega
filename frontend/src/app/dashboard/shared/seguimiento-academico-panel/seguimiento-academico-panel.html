@@ -1,0 +1,84 @@
+<section class="space-y-5" aria-labelledby="seguimiento-title">
+  <div class="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+    <div>
+      <h3 id="seguimiento-title" class="text-sm font-bold uppercase text-slate-800">Seguimiento de {{ nombreProceso() }}</h3>
+      <p class="mt-1 text-xs text-slate-500">Resumen calculado desde bitácoras, asistencias, notas y encuestas.</p>
+    </div>
+    <label class="text-xs font-bold text-slate-600">
+      Estado del expediente
+      <select [ngModel]="filtro()" (ngModelChange)="filtroChange.emit($event)" class="mt-1 block min-h-11 w-full rounded-lg border border-slate-300 bg-white px-3 lg:w-64">
+        <option value="TODOS">Todos</option>
+        <option value="RIESGO">Con alertas</option>
+        <option value="BITACORAS">Bitácoras pendientes</option>
+        <option value="NOTAS">Notas pendientes</option>
+        <option value="ENCUESTAS">Encuestas pendientes</option>
+        <option value="CIERRE">Listos para cierre</option>
+      </select>
+    </label>
+  </div>
+
+  <div class="grid grid-cols-2 gap-3 xl:grid-cols-4" aria-live="polite">
+    <div class="rounded-lg border border-slate-200 p-4"><span class="block text-[10px] font-bold uppercase text-slate-500">Expedientes</span><strong class="mt-1 block font-mono text-xl text-slate-800">{{ items().length }}</strong></div>
+    <div class="rounded-lg border border-red-200 bg-red-50 p-4"><span class="block text-[10px] font-bold uppercase text-red-700">En riesgo</span><strong class="mt-1 block font-mono text-xl text-red-800">{{ enRiesgo() }}</strong></div>
+    <div class="rounded-lg border border-amber-200 bg-amber-50 p-4"><span class="block text-[10px] font-bold uppercase text-amber-800">Bitácoras pendientes</span><strong class="mt-1 block font-mono text-xl text-amber-900">{{ bitacorasPendientes() }}</strong></div>
+    <div class="rounded-lg border border-blue-200 bg-blue-50 p-4"><span class="block text-[10px] font-bold uppercase text-blue-800">Notas y encuestas</span><strong class="mt-1 block font-mono text-xl text-blue-900">{{ pendientesAcademicos() }}</strong></div>
+  </div>
+
+  <div class="hidden overflow-x-auto rounded-lg border border-slate-200 lg:block">
+    <table class="w-full min-w-[1000px] text-left text-xs">
+      <thead class="border-b border-slate-200 bg-slate-50 text-slate-600">
+        <tr><th class="p-3">Estudiante</th><th class="p-3">Entidad y tutor</th><th class="p-3 text-center">Horas</th><th class="p-3 text-center">Bitácoras</th><th class="p-3 text-center">Parciales</th><th class="p-3 text-center">Pendientes</th><th class="p-3">Alertas</th><th class="p-3 text-right">Acción académica</th></tr>
+      </thead>
+      <tbody class="divide-y divide-slate-100">
+        @for (item of filtrados(); track id(item)) {
+          <tr class="align-top hover:bg-slate-50">
+            <td class="p-3"><strong class="text-slate-800">{{ item.estudiante }}</strong><span class="block text-[10px] text-slate-500">{{ item.matricula || 'Sin matrícula' }} · {{ item.carrera }}</span></td>
+            <td class="p-3"><strong class="text-slate-700">{{ entidad(item) }}</strong><span class="block text-[10px] text-slate-500">Tutor: {{ item.tutor || 'Sin asignar' }}</span></td>
+            <td class="p-3 text-center"><span class="font-mono font-bold">{{ item.horasCompletadas || 0 }}/{{ item.horasRequeridas || 0 }} h</span><div class="mx-auto mt-2 h-2 w-24 overflow-hidden rounded-full bg-slate-100" role="progressbar" [attr.aria-valuenow]="item.porcentajeAvance" aria-valuemin="0" aria-valuemax="100"><div class="h-full" [class.bg-amber-600]="item.riesgo" [class.bg-green-700]="!item.riesgo" [style.width.%]="item.porcentajeAvance"></div></div><span class="text-[10px] text-slate-500">{{ item.porcentajeAvance }}%</span></td>
+            <td class="p-3 text-center font-mono"><strong class="text-amber-800">{{ item.bitacorasPendientes }}</strong> pendientes<br><strong class="text-red-700">{{ item.bitacorasRechazadas + item.bitacorasCorreccion }}</strong> observadas</td>
+            <td class="p-3 text-center font-mono font-bold">{{ item.parcialesCerrados }}/3</td>
+            <td class="p-3 text-center"><span class="font-mono font-bold">{{ item.notasTutorPendientes + item.notasCoordPendientes }} notas</span><span class="block text-[10px] text-slate-500">{{ item.encuestasPendientes }} encuestas</span></td>
+            <td class="p-3"><div class="flex flex-wrap gap-1">@for (alerta of item.alertas; track alerta) { <span class="rounded border px-2 py-1 text-[9px] font-bold" [class]="alerta === 'Listo para cierre' ? 'bg-green-50 border-green-200 text-green-700' : 'bg-amber-50 border-amber-200 text-amber-800'">{{ alerta }}</span> } @empty { <span class="rounded border border-green-200 bg-green-50 px-2 py-1 text-[9px] font-bold text-green-700">Sin alertas</span> }</div>@if (item.diasSinActividad) { <p class="mt-2 text-[10px] text-slate-500">Sin actividad: {{ item.diasSinActividad }} día(s)</p> }</td>
+            <td class="p-3 text-right">
+              @if (item.estado === 'completado') {
+                <button type="button" (click)="abrirActa.emit(id(item))" [disabled]="cargandoActaId() !== null" [attr.aria-busy]="cargandoActaId() === id(item)" class="inline-flex min-h-9 min-w-28 items-center justify-center gap-2 rounded-lg border border-unibe-blue bg-white px-3 font-bold text-unibe-blue transition-colors hover:bg-blue-50 disabled:cursor-wait disabled:border-slate-300 disabled:text-slate-500">
+                  @if (cargandoActaId() === id(item)) { <span class="h-3.5 w-3.5 animate-spin rounded-full border-2 border-slate-300 border-t-unibe-blue" aria-hidden="true"></span> Cargando acta… } @else { Ver acta }
+                </button>
+              } @else if (item.listoParaCierre) {
+                <button type="button" (click)="cerrar.emit(id(item))" [disabled]="cerrandoId() !== null" [attr.aria-busy]="cerrandoId() === id(item)" title="Valida los requisitos y marca el expediente como completado" class="inline-flex min-h-9 min-w-36 items-center justify-center gap-2 rounded-lg bg-green-700 px-3 font-bold text-white shadow-sm transition-colors hover:bg-green-800 disabled:cursor-wait disabled:bg-slate-400">
+                  @if (cerrandoId() === id(item)) { <span class="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/40 border-t-white" aria-hidden="true"></span> Finalizando… } @else { Finalizar expediente }
+                </button>
+              } @else {
+                <span class="text-[10px] font-bold text-slate-500">En seguimiento</span>
+              }
+            </td>
+          </tr>
+        } @empty {
+          <tr><td colspan="8" class="p-8 text-center text-slate-500">No hay expedientes para el filtro seleccionado.</td></tr>
+        }
+      </tbody>
+    </table>
+  </div>
+
+  <div class="grid gap-3 lg:hidden">
+    @for (item of filtrados(); track id(item)) {
+      <article class="space-y-3 rounded-lg border border-slate-200 p-4">
+        <div class="flex items-start justify-between gap-3"><div><strong class="text-sm text-slate-800">{{ item.estudiante }}</strong><p class="text-xs text-slate-500">{{ item.carrera }} · {{ entidad(item) }}</p></div><span class="rounded border px-2 py-1 text-[10px] font-bold" [class]="item.riesgo ? 'bg-red-50 border-red-200 text-red-700' : 'bg-green-50 border-green-200 text-green-700'">{{ item.riesgo ? 'Con alertas' : 'Al día' }}</span></div>
+        <div><div class="flex justify-between text-xs"><span>Horas</span><strong>{{ item.horasCompletadas || 0 }}/{{ item.horasRequeridas || 0 }}</strong></div><div class="mt-1 h-2 overflow-hidden rounded-full bg-slate-100"><div class="h-full bg-unibe-blue" [style.width.%]="item.porcentajeAvance"></div></div></div>
+        <div class="grid grid-cols-3 gap-2 text-center text-xs"><div class="rounded bg-slate-50 p-2"><strong class="block">{{ item.bitacorasPendientes }}</strong>Bitácoras</div><div class="rounded bg-slate-50 p-2"><strong class="block">{{ item.parcialesCerrados }}/3</strong>Parciales</div><div class="rounded bg-slate-50 p-2"><strong class="block">{{ item.notasTutorPendientes + item.notasCoordPendientes }}</strong>Notas</div></div>
+        <div class="flex flex-wrap gap-1">@for (alerta of item.alertas; track alerta) { <span class="rounded border border-amber-200 bg-amber-50 px-2 py-1 text-[9px] font-bold text-amber-800">{{ alerta }}</span> }</div>
+        @if (item.estado === 'completado') {
+          <button type="button" (click)="abrirActa.emit(id(item))" [disabled]="cargandoActaId() !== null" class="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg border border-unibe-blue text-xs font-bold text-unibe-blue disabled:cursor-wait disabled:border-slate-300 disabled:text-slate-500">
+            @if (cargandoActaId() === id(item)) { <span class="h-4 w-4 animate-spin rounded-full border-2 border-slate-300 border-t-unibe-blue" aria-hidden="true"></span> Cargando acta… } @else { Ver acta }
+          </button>
+        } @else if (item.listoParaCierre) {
+          <button type="button" (click)="cerrar.emit(id(item))" [disabled]="cerrandoId() !== null" title="Valida los requisitos y marca el expediente como completado" class="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg bg-green-700 text-xs font-bold text-white disabled:cursor-wait disabled:bg-slate-400">
+            @if (cerrandoId() === id(item)) { <span class="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" aria-hidden="true"></span> Finalizando… } @else { Finalizar expediente }
+          </button>
+        }
+      </article>
+    } @empty {
+      <p class="py-10 text-center text-sm text-slate-500">No hay expedientes para mostrar.</p>
+    }
+  </div>
+</section>

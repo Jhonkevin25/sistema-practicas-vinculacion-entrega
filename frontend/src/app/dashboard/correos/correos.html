@@ -1,0 +1,170 @@
+<div class="space-y-6">
+  <div class="bg-white p-5 border border-slate-200 rounded-lg shadow-sm flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+    <div>
+      <h2 class="text-base font-bold text-unibe-blue uppercase tracking-wide">Monitor de Correos</h2>
+      <p class="text-xs text-slate-500 font-medium mt-1">Gestión de la cola de notificaciones asíncronas.</p>
+    </div>
+    <div class="flex gap-2">
+      <input type="text" [(ngModel)]="filtroDestinatario" (keyup.enter)="aplicarFiltros()" placeholder="Buscar destinatario..." class="px-3 py-2 text-xs border-slate-200 rounded-md w-full md:w-64" />
+      <select [(ngModel)]="filtroEstado" (change)="aplicarFiltros()" class="text-xs border-slate-200 rounded-md bg-white">
+        <option value="">Todos los estados</option>
+        <option value="PENDIENTE">Pendiente</option>
+        <option value="ENVIADO">Enviado</option>
+        <option value="FALLIDO">Fallido</option>
+      </select>
+      <button type="button" (click)="aplicarFiltros()" class="px-4 py-2 bg-unibe-blue text-white text-xs font-bold rounded-lg hover:bg-unibe-blue-hover transition-colors flex items-center gap-2" title="Buscar">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" /></svg>
+      </button>
+      <button type="button" (click)="aplicarFiltros()" class="px-4 py-2 bg-slate-100 text-slate-700 border border-slate-200 text-xs font-bold rounded-lg hover:bg-slate-200 transition-colors flex items-center gap-2">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4" [class.animate-spin]="cargando()"><path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" /></svg>
+        Actualizar
+      </button>
+    </div>
+  </div>
+
+  <div class="bg-white border border-slate-200 rounded-lg shadow-sm overflow-hidden">
+    <div class="overflow-x-auto">
+      <table class="w-full text-left text-xs">
+        <thead class="text-[10px] uppercase text-slate-400 bg-slate-50 border-b border-slate-200">
+          <tr>
+            <th class="p-4 font-bold">ID</th>
+            <th class="p-4 font-bold">Creación</th>
+            <th class="p-4 font-bold">Destinatario</th>
+            <th class="p-4 font-bold">Asunto</th>
+            <th class="p-4 font-bold">Estado</th>
+            <th class="p-4 font-bold text-center">Intentos</th>
+            <th class="p-4 font-bold text-center">Acciones</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100">
+          @if (cargando()) {
+            <tr>
+              <td colspan="7" class="p-8 text-center text-slate-500">
+                <span class="inline-block w-6 h-6 border-2 border-unibe-blue/20 border-t-unibe-blue rounded-full animate-spin"></span>
+              </td>
+            </tr>
+          } @else if (correos().length === 0) {
+            <tr>
+              <td colspan="7" class="p-8 text-center text-slate-500 font-medium">Presiona "Actualizar" o utiliza los filtros para cargar el registro de correos.</td>
+            </tr>
+          } @else {
+            @for (correo of correos(); track correo.id) {
+              <tr class="hover:bg-slate-50 transition-colors">
+                <td class="p-4 font-mono font-bold text-slate-600">#{{ correo.id }}</td>
+                <td class="p-4 text-slate-500">{{ correo.fechaCreacion | date:'dd/MM/yyyy HH:mm' }}</td>
+                <td class="p-4 font-medium text-slate-700">{{ correo.destinatario }}</td>
+                <td class="p-4 text-slate-600 truncate max-w-xs" [title]="correo.asunto">{{ correo.asunto }}</td>
+                <td class="p-4">
+                  <span class="px-2.5 py-1 rounded border text-[10px] font-bold" [class]="claseEstado(correo.estado)">{{ correo.estado }}</span>
+                </td>
+                <td class="p-4 text-center font-bold text-slate-600">{{ correo.intentos }}</td>
+                <td class="p-4">
+                  <div class="flex items-center justify-center gap-2">
+                    <button type="button" (click)="verDetalles(correo)" title="Ver detalle" class="text-slate-400 hover:text-unibe-blue transition-colors">
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" /></svg>
+                    </button>
+                    @if (correo.estado === 'FALLIDO') {
+                      <button
+                        type="button"
+                        (click)="reintentar(correo)"
+                        [disabled]="reintentandoId() === correo.id"
+                        class="inline-flex items-center gap-1 text-[11px] font-bold text-amber-600 transition-colors hover:text-amber-700 disabled:cursor-wait disabled:opacity-50"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4" [class.animate-spin]="reintentandoId() === correo.id"><path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" /></svg>
+                        {{ reintentandoId() === correo.id ? 'Procesando' : 'Reintentar' }}
+                      </button>
+                    }
+                    <button type="button" (click)="eliminar(correo.id)" title="Eliminar" class="text-slate-400 hover:text-red-500 transition-colors">
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg>
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            }
+          }
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Paginación -->
+    @if (totalCorreos() > size()) {
+      <div class="p-4 border-t border-slate-200 flex items-center justify-between text-xs text-slate-500 bg-slate-50">
+        <span>Mostrando {{ page() * size() + 1 }} a {{ (page() + 1) * size() > totalCorreos() ? totalCorreos() : (page() + 1) * size() }} de {{ totalCorreos() }} correos</span>
+        <div class="flex gap-1">
+          <button type="button" (click)="cambiarPagina(page() - 1)" [disabled]="page() === 0" class="px-2.5 py-1.5 border border-slate-200 bg-white rounded hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">Anterior</button>
+          <button type="button" (click)="cambiarPagina(page() + 1)" [disabled]="(page() + 1) * size() >= totalCorreos()" class="px-2.5 py-1.5 border border-slate-200 bg-white rounded hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">Siguiente</button>
+        </div>
+      </div>
+    }
+  </div>
+
+  <!-- Modal Detalle Correo -->
+  @if (mostrarModal()) {
+    <div class="fixed left-0 top-0 z-[100] !mt-0 flex h-[100dvh] w-screen items-center justify-center bg-slate-950/65 p-3 backdrop-blur-sm sm:p-5">
+      <div role="dialog" aria-modal="true" aria-labelledby="titulo-detalle-correo" class="flex max-h-[calc(100dvh-1.5rem)] w-full max-w-3xl flex-col overflow-hidden rounded-xl bg-white shadow-2xl sm:max-h-[calc(100dvh-2.5rem)]">
+        <div class="p-4 border-b border-slate-200 flex items-center justify-between bg-slate-50">
+          <div>
+            <p class="text-[10px] font-bold uppercase tracking-wider text-unibe-blue">Cola de notificaciones</p>
+            <h3 id="titulo-detalle-correo" class="font-bold text-slate-800">Detalle del correo #{{ correoSeleccionado()?.id }}</h3>
+          </div>
+          <button type="button" (click)="cerrarModal()" aria-label="Cerrar detalle del correo" class="rounded-md p-1 text-slate-400 transition-colors hover:bg-slate-200 hover:text-slate-600">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" /></svg>
+          </button>
+        </div>
+        
+        <div class="p-5 overflow-y-auto bg-slate-100 flex-1 space-y-4">
+          <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div class="bg-white p-4 rounded-lg border border-slate-200 shadow-sm">
+              <span class="block text-[10px] uppercase font-bold text-slate-400 mb-1">Destinatario</span>
+              <p class="text-sm font-medium text-slate-800">{{ correoSeleccionado()?.destinatario }}</p>
+            </div>
+            <div class="bg-white p-4 rounded-lg border border-slate-200 shadow-sm">
+              <span class="block text-[10px] uppercase font-bold text-slate-400 mb-1">Estado e Intentos</span>
+              <div class="flex items-center gap-3">
+                <span class="px-2.5 py-1 rounded border text-[10px] font-bold" [class]="claseEstado(correoSeleccionado()?.estado || '')">{{ correoSeleccionado()?.estado }}</span>
+                <span class="text-xs font-bold text-slate-500">{{ correoSeleccionado()?.intentos }} intentos</span>
+              </div>
+            </div>
+          </div>
+
+          @if (correoSeleccionado()?.ultimoError) {
+            <div class="bg-red-50 p-4 rounded-lg border border-red-200 shadow-sm">
+              <span class="block text-[10px] uppercase font-bold text-red-500 mb-1">Último Error</span>
+              <p class="text-xs font-mono text-red-700 break-words">{{ correoSeleccionado()?.ultimoError }}</p>
+            </div>
+          }
+
+          <div class="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden flex flex-col h-[400px]">
+            <div class="px-4 py-3 bg-slate-50 border-b border-slate-200 flex flex-col">
+              <span class="text-[10px] uppercase font-bold text-slate-400">Asunto</span>
+              <p class="text-sm font-bold text-slate-800">{{ correoSeleccionado()?.asunto }}</p>
+            </div>
+            <div class="p-4 overflow-y-auto flex-1 bg-white">
+              <span class="block text-[10px] uppercase font-bold text-slate-400 mb-2">Cuerpo HTML</span>
+              <iframe [srcdoc]="correoSeleccionado()?.cuerpoHtml" class="w-full h-full min-h-[300px] border-0"></iframe>
+            </div>
+          </div>
+        </div>
+        
+        <div class="p-4 border-t border-slate-200 bg-slate-50 flex justify-end gap-2">
+          @if (correoSeleccionado()?.estado === 'FALLIDO') {
+            <button
+              type="button"
+              (click)="reintentar(correoSeleccionado()!)"
+              [disabled]="reintentandoId() === correoSeleccionado()?.id"
+              class="inline-flex items-center justify-center gap-2 rounded-lg bg-amber-500 px-4 py-2 text-xs font-bold text-white shadow-sm transition-colors hover:bg-amber-600 disabled:cursor-wait disabled:bg-amber-300"
+            >
+              @if (reintentandoId() === correoSeleccionado()?.id) {
+                <span class="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/40 border-t-white"></span>
+                Procesando
+              } @else {
+                Reintentar envío
+              }
+            </button>
+          }
+          <button type="button" (click)="cerrarModal()" class="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-800 text-xs font-bold rounded-lg transition-colors">Cerrar</button>
+        </div>
+      </div>
+    </div>
+  }
+</div>

@@ -1,0 +1,4 @@
+external_id,cedula,email_institucional,nombre,apellido,matricula,carrera,semestre,periodo_academico,estado_matricula
+MVP47-EST-DER-001,TEST-MVP47-DER-001,ana.torres.mvp47@est.unibe.edu.ec,Ana,Torres,MVP47-DER-001,Derecho,4,2026-2,ACTIVO
+MVP47-EST-SW-002,TEST-MVP47-SW-002,daniel.paz.mvp47@est.unibe.edu.ec,Daniel,Paz,MVP47-SW-002,Ingeniería en Software,6,2026-2,ACTIVO
+MVP47-EST-SW-003,TEST-MVP47-SW-003,emilia.cardenas.mvp47@est.unibe.edu.ec,Emilia,Cardenas,MVP47-SW-003,Ingeniería en Software,6,2026-2,ACTIVO

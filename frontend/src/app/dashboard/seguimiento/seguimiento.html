@@ -1,0 +1,211 @@
+<div class="space-y-5">
+  <header class="bg-white p-5 border border-slate-200 rounded-lg shadow-sm flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+    <div>
+      <h2 class="text-base font-bold text-unibe-blue uppercase tracking-wide">Seguimiento académico unificado</h2>
+      <p class="mt-1 text-xs text-slate-500">Prácticas y vinculación dentro del alcance asignado a coordinación.</p>
+    </div>
+    <button type="button" (click)="cargar()" [disabled]="cargando()" title="Actualizar seguimiento" class="inline-flex h-10 min-w-28 shrink-0 self-start items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-4 text-xs font-bold text-slate-700 shadow-sm transition-colors hover:border-slate-400 hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-unibe-blue disabled:cursor-wait disabled:opacity-60 lg:self-auto">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="h-4 w-4 shrink-0" [class.animate-spin]="cargando()" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" /></svg>
+      <span>Actualizar</span>
+    </button>
+  </header>
+
+  <section class="bg-white border border-slate-200 rounded-lg shadow-sm" aria-labelledby="prioridades-title">
+    <div class="px-5 py-4 border-b border-slate-100">
+      <h3 id="prioridades-title" class="text-xs font-bold text-slate-800 uppercase tracking-wide">Prioridades de coordinación</h3>
+      <p class="mt-1 text-[11px] text-slate-500">Indicadores reportados por el seguimiento del backend.</p>
+    </div>
+    <div class="grid grid-cols-2 xl:grid-cols-4 divide-x divide-y xl:divide-y-0 divide-slate-100">
+      <button type="button" (click)="aplicarPendiente('RIESGO')" class="p-4 text-left hover:bg-red-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-red-600">
+        <span class="block text-[10px] text-red-700 font-bold uppercase">Expedientes en riesgo</span>
+        <strong class="block mt-1 text-xl text-red-800 font-mono">{{ enRiesgo() }}</strong>
+      </button>
+      <button type="button" (click)="aplicarPendiente('BITACORAS')" class="p-4 text-left hover:bg-amber-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-amber-600">
+        <span class="block text-[10px] text-amber-800 font-bold uppercase">Bitácoras observadas</span>
+        <strong class="block mt-1 text-xl text-amber-900 font-mono">{{ bitacorasObservadas() }}</strong>
+      </button>
+      <button type="button" (click)="aplicarPendiente('NOTAS')" class="p-4 text-left hover:bg-blue-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-600">
+        <span class="block text-[10px] text-blue-800 font-bold uppercase">Notas pendientes</span>
+        <strong class="block mt-1 text-xl text-blue-900 font-mono">{{ notasPendientes() }}</strong>
+      </button>
+      <button type="button" (click)="aplicarPendiente('CIERRE')" class="p-4 text-left hover:bg-green-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-green-700">
+        <span class="block text-[10px] text-green-700 font-bold uppercase">Listos para cierre</span>
+        <strong class="block mt-1 text-xl text-green-800 font-mono">{{ listosParaCierre() }}</strong>
+      </button>
+    </div>
+  </section>
+
+  <section class="bg-white border border-slate-200 rounded-lg shadow-sm">
+    <div class="p-5 border-b border-slate-100 space-y-4">
+      <div class="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
+        <label class="block flex-1 max-w-xl text-xs font-bold text-slate-600">
+          Buscar expediente
+          <div class="relative mt-1">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m21 21-4.35-4.35m1.35-5.4a6.75 6.75 0 1 1-13.5 0 6.75 6.75 0 0 1 13.5 0Z" /></svg>
+            <input type="search" [ngModel]="busqueda()" (ngModelChange)="busqueda.set($event)" placeholder="Estudiante, matrícula, carrera, entidad o tutor" class="min-h-11 w-full pl-10 pr-3 bg-white border border-slate-300 rounded-lg font-normal text-slate-800 placeholder:text-slate-400" />
+          </div>
+        </label>
+
+        <label class="block text-xs font-bold text-slate-600">
+          Pendiente
+          <select [ngModel]="pendiente()" (ngModelChange)="pendiente.set($event)" class="block mt-1 min-h-11 w-full xl:w-60 px-3 bg-white border border-slate-300 rounded-lg font-normal text-slate-800">
+            <option value="TODOS">Todos los expedientes</option>
+            <option value="RIESGO">Con riesgo</option>
+            <option value="BITACORAS">Con bitácoras pendientes</option>
+            <option value="NOTAS">Con notas pendientes</option>
+            <option value="ENCUESTAS">Con encuestas pendientes</option>
+            <option value="CIERRE">Listos para cierre</option>
+          </select>
+        </label>
+
+        <button type="button" (click)="limpiarFiltros()" class="min-h-11 px-4 border border-slate-300 rounded-lg text-xs font-bold text-slate-700 hover:bg-slate-50">Limpiar filtros</button>
+      </div>
+
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <div class="inline-flex border border-slate-300 rounded-lg overflow-hidden" role="group" aria-label="Filtrar por proceso">
+          <button type="button" (click)="seleccionarProceso('TODOS')" [class.bg-unibe-blue]="proceso() === 'TODOS'" [class.text-white]="proceso() === 'TODOS'" class="min-h-10 px-4 text-xs font-bold text-slate-600 hover:bg-slate-50">Todos</button>
+          @if (puedeVer('PRACTICAS')) {
+            <button type="button" (click)="seleccionarProceso('PRACTICAS')" [class.bg-unibe-blue]="proceso() === 'PRACTICAS'" [class.text-white]="proceso() === 'PRACTICAS'" class="min-h-10 px-4 border-l border-slate-300 text-xs font-bold text-slate-600 hover:bg-slate-50">Prácticas</button>
+          }
+          @if (puedeVer('VINCULACION')) {
+            <button type="button" (click)="seleccionarProceso('VINCULACION')" [class.bg-unibe-blue]="proceso() === 'VINCULACION'" [class.text-white]="proceso() === 'VINCULACION'" class="min-h-10 px-4 border-l border-slate-300 text-xs font-bold text-slate-600 hover:bg-slate-50">Vinculación</button>
+          }
+        </div>
+        <p class="text-xs text-slate-500"><strong class="text-slate-800">{{ filtrados().length }}</strong> de {{ items().length }} expedientes</p>
+      </div>
+    </div>
+
+    @if (cargando()) {
+      <div class="py-16 text-center text-sm text-slate-500" aria-live="polite">Cargando seguimiento...</div>
+    } @else {
+      <div class="hidden lg:block overflow-x-auto">
+        <table class="w-full min-w-[1100px] text-left text-xs">
+          <thead class="bg-slate-50 border-b border-slate-200 text-slate-600">
+            <tr><th class="p-3">Estudiante</th><th class="p-3">Proceso y entidad</th><th class="p-3">Tutor</th><th class="p-3 text-center">Avance</th><th class="p-3 text-center">Pendientes</th><th class="p-3">Estado</th><th class="p-3 text-right">Acción</th></tr>
+          </thead>
+          <tbody class="divide-y divide-slate-100">
+            @for (item of filtrados(); track item.clave) {
+              <tr class="align-top hover:bg-slate-50">
+                <td class="p-3"><strong class="text-slate-800">{{ item.estudiante }}</strong><span class="block mt-0.5 text-[10px] text-slate-500">{{ item.matricula || 'Sin matrícula' }} · {{ item.carrera }}</span></td>
+                <td class="p-3"><span class="inline-block px-2 py-0.5 border rounded text-[9px] font-bold" [class]="item.proceso === 'PRACTICAS' ? 'bg-blue-50 border-blue-200 text-blue-700' : 'bg-teal-50 border-teal-200 text-teal-700'">{{ nombreProceso(item.proceso) }}</span><strong class="block mt-1 text-slate-700">{{ item.entidad }}</strong><span class="text-[10px] text-slate-500">{{ item.periodoAcademico }}</span></td>
+                <td class="p-3 text-slate-700">{{ item.tutor }}</td>
+                <td class="p-3 text-center"><strong class="font-mono">{{ item.horasCompletadas }}/{{ item.horasRequeridas }} h</strong><div class="mt-2 h-2 w-24 mx-auto bg-slate-100 rounded-full overflow-hidden" role="progressbar" [attr.aria-valuenow]="item.porcentajeAvance" aria-valuemin="0" aria-valuemax="100"><div class="h-full" [class.bg-red-600]="item.riesgo" [class.bg-green-700]="!item.riesgo" [style.width.%]="item.porcentajeAvance"></div></div><span class="text-[10px] text-slate-500">{{ item.porcentajeAvance }}%</span></td>
+                <td class="p-3 text-center"><strong class="font-mono text-amber-800">{{ item.bitacorasPendientes + item.bitacorasRechazadas + item.bitacorasCorreccion }}</strong><span class="block text-[10px] text-slate-500">bitácoras</span><strong class="font-mono text-blue-800">{{ item.notasTutorPendientes + item.notasCoordPendientes }}</strong><span class="block text-[10px] text-slate-500">notas</span></td>
+                <td class="p-3"><span class="inline-block px-2 py-1 border rounded text-[10px] font-bold" [class]="item.riesgo ? 'bg-red-50 border-red-200 text-red-700' : (item.listoParaCierre ? 'bg-green-50 border-green-200 text-green-700' : 'bg-slate-50 border-slate-200 text-slate-600')">{{ item.riesgo ? 'Con riesgo' : (item.listoParaCierre ? 'Listo para cierre' : estadoTexto(item.estado)) }}</span>@if (item.diasSinActividad !== null) { <span class="block mt-1 text-[10px] text-slate-500">{{ item.diasSinActividad }} día(s) sin actividad</span> } @if (esTerminal(item.estado) && item.motivoFinalizacion) { <span class="mt-2 block max-w-xs text-[10px] leading-relaxed text-slate-600"><strong>Motivo:</strong> {{ item.motivoFinalizacion }}</span> }</td>
+                <td class="p-3 text-right"><div class="flex flex-wrap justify-end gap-2"><button type="button" (click)="abrirHistorial(item)" class="min-h-9 px-3 border border-unibe-blue text-unibe-blue rounded-lg font-bold hover:bg-unibe-blue hover:text-white">Historial</button><button type="button" (click)="abrirComunicaciones(item)" class="min-h-9 px-3 border border-emerald-300 text-emerald-700 rounded-lg font-bold hover:bg-emerald-50">Comunicaciones</button><button type="button" (click)="abrirNota(item)" class="min-h-9 px-3 border border-purple-300 text-purple-700 rounded-lg font-bold hover:bg-purple-50">Constancia interna</button>@if (puedeFinalizarExpediente(item)) { <button type="button" (click)="abrirFinalizacion(item)" class="min-h-9 px-3 border border-red-300 text-red-700 rounded-lg font-bold hover:bg-red-50">Finalizar expediente</button> } @else { <button type="button" (click)="abrirModulo(item)" class="min-h-9 px-3 border border-slate-300 text-slate-700 rounded-lg font-bold hover:bg-slate-50">Abrir módulo</button> }</div></td>
+              </tr>
+            } @empty {
+              <tr><td colspan="7" class="p-10 text-center text-slate-500">No hay expedientes para los filtros seleccionados.</td></tr>
+            }
+          </tbody>
+        </table>
+      </div>
+
+      <div class="grid gap-3 p-4 lg:hidden">
+        @for (item of filtrados(); track item.clave) {
+          <article class="border border-slate-200 rounded-lg p-4 space-y-3">
+            <div class="flex items-start justify-between gap-3"><div><strong class="text-sm text-slate-800">{{ item.estudiante }}</strong><p class="text-xs text-slate-500">{{ item.carrera }}</p></div><span class="px-2 py-1 border rounded text-[9px] font-bold" [class]="item.proceso === 'PRACTICAS' ? 'bg-blue-50 border-blue-200 text-blue-700' : 'bg-teal-50 border-teal-200 text-teal-700'">{{ nombreProceso(item.proceso) }}</span></div>
+            <div class="text-xs"><strong class="text-slate-700">{{ item.entidad }}</strong><span class="block text-slate-500">Tutor: {{ item.tutor }}</span></div>
+            <div><div class="flex justify-between text-xs"><span>Avance</span><strong>{{ item.horasCompletadas }}/{{ item.horasRequeridas }} h</strong></div><div class="mt-1 h-2 bg-slate-100 rounded-full overflow-hidden"><div class="h-full" [class.bg-red-600]="item.riesgo" [class.bg-green-700]="!item.riesgo" [style.width.%]="item.porcentajeAvance"></div></div></div>
+            <div class="grid grid-cols-3 gap-2 text-center text-xs"><div class="p-2 bg-slate-50 rounded"><strong class="block">{{ item.bitacorasPendientes + item.bitacorasRechazadas + item.bitacorasCorreccion }}</strong>Bitácoras</div><div class="p-2 bg-slate-50 rounded"><strong class="block">{{ item.notasTutorPendientes + item.notasCoordPendientes }}</strong>Notas</div><div class="p-2 bg-slate-50 rounded"><strong class="block">{{ item.encuestasPendientes }}</strong>Encuestas</div></div>
+            @if (esTerminal(item.estado) && item.motivoFinalizacion) { <p class="text-xs leading-relaxed text-slate-600"><strong>Motivo:</strong> {{ item.motivoFinalizacion }}</p> }
+            <div class="grid grid-cols-1 gap-2 sm:grid-cols-2"><button type="button" (click)="abrirHistorial(item)" class="w-full min-h-11 border border-unibe-blue text-unibe-blue rounded-lg text-xs font-bold">Historial</button><button type="button" (click)="abrirComunicaciones(item)" class="w-full min-h-11 border border-emerald-300 text-emerald-700 rounded-lg text-xs font-bold">Comunicaciones</button><button type="button" (click)="abrirNota(item)" class="w-full min-h-11 border border-purple-300 text-purple-700 rounded-lg text-xs font-bold">Constancia interna</button>@if (puedeFinalizarExpediente(item)) { <button type="button" (click)="abrirFinalizacion(item)" class="w-full min-h-11 border border-red-300 text-red-700 rounded-lg text-xs font-bold">Finalizar expediente</button> } @else { <button type="button" (click)="abrirModulo(item)" class="w-full min-h-11 border border-slate-300 text-slate-700 rounded-lg text-xs font-bold">Abrir módulo</button> }</div>
+          </article>
+        } @empty {
+          <p class="py-10 text-center text-sm text-slate-500">No hay expedientes para mostrar.</p>
+        }
+      </div>
+    }
+  </section>
+</div>
+
+@if (historialExpediente(); as seleccionado) {
+  <app-linea-tiempo-expediente
+    [titulo]="'Historial de ' + seleccionado.estudiante + ' · ' + nombreProceso(seleccionado.proceso)"
+    [lineaTiempo]="historial()"
+    [cargando]="cargandoHistorial()"
+    (cerrar)="cerrarHistorial()"
+  />
+}
+
+@if (comentarioExpediente(); as seleccionado) {
+  <app-comentarios-seguimiento-modal
+    [proceso]="seleccionado.proceso"
+    [expedienteId]="seleccionado.expedienteId"
+    [titulo]="'Comunicaciones · ' + seleccionado.estudiante"
+    [rol]="rolActual()"
+    [cerrado]="esTerminal(seleccionado.estado)"
+    (cerrar)="cerrarComunicaciones()"
+  />
+}
+
+@if (finalizacionExpediente(); as seleccionado) {
+  <div class="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/60 p-0 backdrop-blur-sm sm:items-center sm:p-4 overflow-y-auto" role="presentation">
+    <section class="max-h-[92vh] w-full min-w-0 overflow-x-hidden overflow-y-auto rounded-t-xl border border-slate-200 bg-white shadow-2xl sm:max-w-lg sm:rounded-xl" role="dialog" aria-modal="true" aria-labelledby="finalizacion-titulo" aria-describedby="finalizacion-descripcion">
+      <header class="flex items-start justify-between gap-4 border-b border-slate-200 bg-slate-50 px-5 py-4">
+        <div><p class="text-[10px] font-bold uppercase tracking-wide text-red-700">Acción excepcional</p><h2 id="finalizacion-titulo" class="mt-1 text-base font-bold text-slate-900">Finalizar expediente</h2><p id="finalizacion-descripcion" class="mt-1 text-xs text-slate-500">{{ seleccionado.estudiante }} · {{ nombreProceso(seleccionado.proceso) }}</p></div>
+        <button type="button" (click)="cerrarFinalizacion()" [disabled]="finalizando()" class="grid min-h-11 min-w-11 place-items-center rounded-lg text-xl text-slate-500 hover:bg-slate-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-unibe-blue" aria-label="Cerrar finalización"><span aria-hidden="true">&times;</span></button>
+      </header>
+      <div class="space-y-5 px-5 py-6">
+        <div class="border-l-4 border-red-500 bg-red-50 px-4 py-3 text-sm leading-relaxed text-red-950" role="note">
+          Esta acción cambia el estado del expediente a un estado terminal y quedará registrada en su historial. Revisa el estado y el motivo antes de confirmar.
+        </div>
+        <label class="block text-xs font-bold text-slate-700" for="estado-finalizacion">Estado de finalización
+          <select id="estado-finalizacion" [ngModel]="estadoFinalizacion()" (ngModelChange)="estadoFinalizacion.set($event)" class="mt-1 block min-h-11 w-full rounded-lg border border-slate-300 bg-white px-3 font-normal text-slate-900 focus:border-unibe-blue focus:outline-none focus:ring-2 focus:ring-blue-100">
+            <option value="RETIRADO">Retirado</option>
+            @if (seleccionado.estado.toLowerCase() === 'en_curso') { <option value="REPROBADO">Reprobado</option> }
+          </select>
+        </label>
+        <label class="block text-xs font-bold text-slate-700" for="motivo-finalizacion">Motivo obligatorio
+          <textarea id="motivo-finalizacion" [ngModel]="motivoFinalizacion()" (ngModelChange)="motivoFinalizacion.set($event)" rows="4" minlength="10" required aria-describedby="motivo-ayuda" class="mt-1 block w-full resize-y rounded-lg border border-slate-300 bg-white px-3 py-2 font-normal leading-relaxed text-slate-900 focus:border-unibe-blue focus:outline-none focus:ring-2 focus:ring-blue-100" placeholder="Describe la razón académica o administrativa..."></textarea>
+          <span id="motivo-ayuda" class="mt-1 block max-w-full break-words font-normal leading-relaxed text-slate-500">Mínimo 10 caracteres. Se conservará como parte del expediente.</span>
+        </label>
+      </div>
+      <footer class="sticky bottom-0 flex flex-col-reverse gap-2 border-t border-slate-200 bg-slate-50 px-5 py-4 sm:flex-row sm:justify-end">
+        <button type="button" (click)="cerrarFinalizacion()" [disabled]="finalizando()" class="min-h-11 rounded-lg border border-slate-300 px-4 py-2 text-xs font-bold text-slate-700 hover:bg-white">Cancelar</button>
+        <button type="button" (click)="confirmarFinalizacion()" [disabled]="finalizando()" class="min-h-11 rounded-lg bg-red-700 px-4 py-2 text-xs font-bold text-white hover:bg-red-800 disabled:cursor-not-allowed disabled:opacity-60">{{ finalizando() ? 'Guardando...' : 'Confirmar finalización' }}</button>
+      </footer>
+    </section>
+  </div>
+}
+
+@if (notaExpediente(); as seleccionado) {
+  <div class="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/60 p-0 backdrop-blur-sm sm:items-center sm:p-4 overflow-y-auto" role="presentation">
+    <section class="max-h-[92vh] w-full min-w-0 overflow-x-hidden overflow-y-auto rounded-t-xl border border-slate-200 bg-white shadow-2xl sm:max-w-lg sm:rounded-xl" role="dialog" aria-modal="true" aria-labelledby="nota-titulo" aria-describedby="nota-descripcion">
+      <header class="flex items-start justify-between gap-4 border-b border-slate-200 bg-slate-50 px-5 py-4">
+        <div><p class="text-[10px] font-bold uppercase tracking-wide text-purple-700">Constancia de seguimiento</p><h2 id="nota-titulo" class="mt-1 text-base font-bold text-slate-900">Agregar nota de coordinación</h2><p id="nota-descripcion" class="mt-1 text-xs text-slate-500">{{ seleccionado.estudiante }} · {{ nombreProceso(seleccionado.proceso) }}</p></div>
+        <button type="button" (click)="cerrarNota()" [disabled]="guardandoNota()" class="grid min-h-11 min-w-11 place-items-center rounded-lg text-xl text-slate-500 hover:bg-slate-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-unibe-blue" aria-label="Cerrar nota"><span aria-hidden="true">&times;</span></button>
+      </header>
+      <div class="space-y-5 px-5 py-6">
+        @if (cargandoNotas()) {
+          <p class="p-4 text-center text-xs text-slate-400">Cargando notas anteriores…</p>
+        } @else if (notasHistorial().length > 0) {
+          <div class="space-y-2">
+            <p class="text-xs font-bold uppercase text-slate-600">Notas anteriores de este expediente</p>
+            <ul class="max-h-48 space-y-2 overflow-y-auto">
+              @for (nota of notasHistorial(); track nota.id) {
+                <li class="rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs">
+                  <div class="flex justify-between text-[10px] font-bold uppercase text-slate-400">
+                    <span>{{ nota.autor?.nombre }} {{ nota.autor?.apellido }}</span>
+                    <span>{{ nota.fechaCreacion | date:'dd/MM/yyyy HH:mm' }}</span>
+                  </div>
+                  <p class="mt-1 leading-relaxed text-slate-700">{{ nota.mensaje }}</p>
+                </li>
+              }
+            </ul>
+          </div>
+        } @else {
+          <p class="text-xs italic text-slate-400">Sin notas anteriores para este expediente.</p>
+        }
+        <label class="block text-xs font-bold text-slate-700" for="mensaje-nota">Nueva nota
+          <textarea id="mensaje-nota" [ngModel]="mensajeNota()" (ngModelChange)="mensajeNota.set($event)" rows="4" minlength="5" required aria-describedby="mensaje-nota-ayuda" class="mt-1 block w-full resize-y rounded-lg border border-slate-300 bg-white px-3 py-2 font-normal leading-relaxed text-slate-900 focus:border-unibe-blue focus:outline-none focus:ring-2 focus:ring-blue-100" placeholder="Describe la observación o la intervención realizada..."></textarea>
+          <span id="mensaje-nota-ayuda" class="mt-1 block max-w-full break-words font-normal leading-relaxed text-slate-500">Mínimo 5 caracteres. El estudiante recibirá una notificación y un correo con este texto.</span>
+        </label>
+      </div>
+      <footer class="sticky bottom-0 flex flex-col-reverse gap-2 border-t border-slate-200 bg-slate-50 px-5 py-4 sm:flex-row sm:justify-end">
+        <button type="button" (click)="cerrarNota()" [disabled]="guardandoNota()" class="min-h-11 rounded-lg border border-slate-300 px-4 py-2 text-xs font-bold text-slate-700 hover:bg-white">Cancelar</button>
+        <button type="button" (click)="confirmarNota()" [disabled]="guardandoNota()" class="min-h-11 rounded-lg bg-purple-700 px-4 py-2 text-xs font-bold text-white hover:bg-purple-800 disabled:cursor-not-allowed disabled:opacity-60">{{ guardandoNota() ? 'Guardando...' : 'Guardar nota' }}</button>
+      </footer>
+    </section>
+  </div>
+}

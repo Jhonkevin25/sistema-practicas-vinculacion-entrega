@@ -1,0 +1,5 @@
+# Credenciales y configuracion local (no versionar)
+backend/sistema-practicas/.env.properties
+
+# Logs de ejecucion locales de las herramientas de desarrollo
+.run-logs/

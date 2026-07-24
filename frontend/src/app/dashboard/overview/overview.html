@@ -1,0 +1,421 @@
+<div class="space-y-6">
+  <!-- Bienvenido Banner Premium -->
+  <div class="relative overflow-hidden p-6 md:p-8 rounded-2xl border border-unibe-blue/10 bg-unibe-blue text-white flex flex-col md:flex-row items-center justify-between gap-6 transition-all shadow-md">
+    <!-- Decorative background element -->
+    <div class="absolute -right-20 -top-20 w-64 h-64 bg-unibe-gold/10 rounded-full blur-3xl pointer-events-none"></div>
+
+    <div class="relative z-10 flex flex-col items-start">
+      <h2 class="text-2xl md:text-3xl font-extrabold tracking-tight">
+        ¡Bienvenido, <span class="text-unibe-gold">{{ userName() }}</span>!
+      </h2>
+      <p class="text-xs md:text-sm text-slate-300 font-medium mt-2 max-w-2xl leading-relaxed">
+        Acceso autorizado al Sistema de Gestión Académica PRAVI — Universidad Iberoamericana del Ecuador.
+      </p>
+    </div>
+    <div class="relative z-10 flex flex-col items-end gap-2">
+      <div class="flex items-center gap-2 bg-white/10 backdrop-blur-sm border border-white/10 px-4 py-2 rounded-xl">
+        <span class="w-2 h-2 rounded-full bg-green-400"></span>
+        <span class="text-[11px] text-white font-bold tracking-widest uppercase">
+          Rol activo: <span class="text-unibe-gold ml-1">{{ userRole() }}</span>
+        </span>
+      </div>
+    </div>
+  </div>
+
+  @if (userRole() === 'TUTOR') {
+    <!-- Accesos del tutor según su área asignada -->
+    <div class="p-5 bg-white border border-slate-200 rounded-lg shadow-sm flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+      <div>
+        <span class="text-[10px] text-slate-500 font-bold uppercase">Área de tutoría</span>
+        <h3 class="mt-1 text-sm font-bold text-unibe-blue">
+          {{ authService.tutorTipo() === 'PRACTICAS' ? 'Prácticas Preprofesionales' : (authService.tutorTipo() === 'VINCULACION' ? 'Vinculación con la Comunidad' : 'Prácticas y Vinculación') }}
+        </h3>
+        <p class="mt-1 text-xs text-slate-500">Estudiantes asignados, bitácoras y calificaciones de tu área.</p>
+      </div>
+      <div class="flex flex-wrap gap-2">
+        @if (authService.tutorTipo() !== 'VINCULACION') {
+          <button type="button" (click)="irA('/dashboard/practicas')" class="min-h-10 px-4 bg-unibe-blue text-white rounded-lg text-xs font-bold">Abrir Prácticas</button>
+        }
+        @if (authService.tutorTipo() !== 'PRACTICAS') {
+          <button type="button" (click)="irA('/dashboard/vinculacion')" class="min-h-10 px-4 border border-unibe-blue text-unibe-blue rounded-lg text-xs font-bold">Abrir Vinculación</button>
+        }
+      </div>
+    </div>
+  }
+
+  @if (userRole() === 'ADMIN' || userRole() === 'COORDINADOR') {
+    <!-- Vista Coordinador / Admin -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div class="group p-5 bg-white border border-slate-200 rounded-xl flex items-center justify-between shadow-sm hover:-translate-y-1 hover:shadow-md hover:border-unibe-blue/30 transition-all duration-300 cursor-default">
+        <div class="space-y-1">
+          <span class="text-[10px] text-slate-400 font-bold uppercase tracking-wider group-hover:text-unibe-blue transition-colors">Estudiantes</span>
+          <h3 class="text-2xl font-black text-slate-800">{{ totalEstudiantes() }}</h3>
+          <p class="text-[10px] text-slate-500 font-medium">Registrados en carreras</p>
+        </div>
+        <div class="p-3 bg-blue-50 border border-blue-100 text-blue-600 rounded-xl group-hover:scale-110 transition-transform duration-300">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-6 h-6">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z" />
+          </svg>
+        </div>
+      </div>
+
+      <div class="group p-5 bg-white border border-slate-200 rounded-xl flex items-center justify-between shadow-sm hover:-translate-y-1 hover:shadow-md hover:border-unibe-gold/30 transition-all duration-300 cursor-default">
+        <div class="space-y-1">
+          <span class="text-[10px] text-slate-400 font-bold uppercase tracking-wider group-hover:text-amber-600 transition-colors">Empresas</span>
+          <h3 class="text-2xl font-black text-slate-800">{{ totalEmpresas() }}</h3>
+          <p class="text-[10px] text-slate-500 font-medium">Convenios vigentes</p>
+        </div>
+        <div class="p-3 bg-amber-50 border border-amber-100 text-amber-600 rounded-xl group-hover:scale-110 transition-transform duration-300">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-6 h-6">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 21h16.5M4.5 3h15M5.25 3v18m13.5-18v18M9 6.75h1.5m-1.5 3h1.5m-1.5 3h1.5m3-6H15m-1.5 3H15m-1.5 3H15M9 21v-3.375c0-.621.504-1.125 1.125-1.125h3.75c.621 0 1.125.504 1.125 1.125V21" />
+          </svg>
+        </div>
+      </div>
+
+      @if (mostrarPracticasGestion()) {
+        <div class="group p-5 bg-white border border-slate-200 rounded-xl flex items-center justify-between shadow-sm hover:-translate-y-1 hover:shadow-md hover:border-sky-500/30 transition-all duration-300 cursor-default">
+          <div class="space-y-1">
+            <span class="text-[10px] text-slate-400 font-bold uppercase tracking-wider group-hover:text-sky-600 transition-colors">Prácticas I & II</span>
+            <h3 class="text-2xl font-black text-slate-800">{{ totalPracticas() }}</h3>
+            <p class="text-[10px] text-slate-500 font-medium">Procesos activos</p>
+          </div>
+          <div class="p-3 bg-sky-50 border border-sky-100 text-sky-600 rounded-xl group-hover:scale-110 transition-transform duration-300">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-6 h-6">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M20.25 14.15v4.25c0 .621-.504 1.125-1.125 1.125H4.875A1.125 1.125 0 0 1 3.75 18.4V14.15m16.5 0c.513 0 .956-.345 1.086-.843.14-.539.214-1.107.214-1.692 0-2.43-.81-4.667-2.216-6.46A2.25 2.25 0 0 0 17.58 4.5H6.42a2.25 2.25 0 0 0-1.722.755c-1.406 1.793-2.216 4.03-2.216 6.46 0 .585.074 1.153.214 1.692.13.498.573.843 1.086.843" />
+            </svg>
+          </div>
+        </div>
+      }
+
+      @if (mostrarVinculacionGestion()) {
+        <div class="group p-5 bg-white border border-slate-200 rounded-xl flex items-center justify-between shadow-sm hover:-translate-y-1 hover:shadow-md hover:border-indigo-500/30 transition-all duration-300 cursor-default">
+          <div class="space-y-1">
+            <span class="text-[10px] text-slate-400 font-bold uppercase tracking-wider group-hover:text-indigo-600 transition-colors">Vinculación</span>
+            <h3 class="text-2xl font-black text-slate-800">{{ totalVinculaciones() }}</h3>
+            <p class="text-[10px] text-slate-500 font-medium">Proyectos activos</p>
+          </div>
+          <div class="p-3 bg-indigo-50 border border-indigo-100 text-indigo-600 rounded-xl group-hover:scale-110 transition-transform duration-300">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-6 h-6">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18 9 11.25l4.306 4.306a11.95 11.95 0 0 1 5.814-5.518l2.74-1.22m0 0-5.94-2.281m5.94 2.28-2.28 5.941" />
+            </svg>
+          </div>
+        </div>
+      }
+    </div>
+
+    <!-- Panel de accesos directos -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div class="p-6 bg-white border border-slate-200 rounded-xl shadow-sm lg:col-span-2 space-y-4 flex flex-col justify-between">
+        <div class="border-b border-slate-100 pb-3 flex justify-between items-end">
+          <div>
+            <h3 class="text-sm font-bold text-unibe-blue uppercase tracking-wide">Acciones Rápidas</h3>
+            <p class="mt-1 text-xs text-slate-500">Alcance actual: <strong class="text-slate-700">{{ descripcionAlcanceGestion() }}</strong></p>
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-4 flex-1">
+          @if (mostrarPracticasGestion()) {
+            <button type="button" (click)="irA('/dashboard/practicas')" class="group relative overflow-hidden p-4 text-left bg-white hover:bg-slate-50 border border-slate-200 hover:border-unibe-blue hover:-translate-y-1 hover:shadow-md transition-all duration-300 rounded-xl flex flex-col justify-center">
+              <span class="block text-[10px] font-bold uppercase text-slate-400 group-hover:text-blue-600 transition-colors">Gestión</span>
+              <strong class="block mt-1 text-xs text-slate-700 group-hover:text-slate-900">Prácticas I & II</strong>
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-4 h-4 absolute bottom-4 right-4 text-slate-300 group-hover:translate-x-1 group-hover:text-unibe-blue transition-all"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" /></svg>
+            </button>
+          }
+
+          @if (mostrarVinculacionGestion()) {
+            <button type="button" (click)="irA('/dashboard/vinculacion')" class="group relative overflow-hidden p-4 text-left bg-white hover:bg-slate-50 border border-slate-200 hover:border-indigo-500 hover:-translate-y-1 hover:shadow-md transition-all duration-300 rounded-xl flex flex-col justify-center">
+              <span class="block text-[10px] font-bold uppercase text-slate-400 group-hover:text-indigo-600 transition-colors">Procesos</span>
+              <strong class="block mt-1 text-xs text-slate-700 group-hover:text-slate-900">Vinculación</strong>
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-4 h-4 absolute bottom-4 right-4 text-slate-300 group-hover:translate-x-1 group-hover:text-indigo-500 transition-all"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" /></svg>
+            </button>
+          }
+
+          <button type="button" (click)="irA('/dashboard/reportes')" class="group relative overflow-hidden p-4 text-left bg-white hover:bg-slate-50 border border-slate-200 hover:border-unibe-gold hover:-translate-y-1 hover:shadow-md transition-all duration-300 rounded-xl flex flex-col justify-center">
+            <span class="block text-[10px] font-bold uppercase text-slate-400 group-hover:text-amber-600 transition-colors">Análisis</span>
+            <strong class="block mt-1 text-xs text-slate-700 group-hover:text-slate-900">Reportes</strong>
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-4 h-4 absolute bottom-4 right-4 text-slate-300 group-hover:translate-x-1 group-hover:text-unibe-gold transition-all"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" /></svg>
+          </button>
+          
+          @if (userRole() === 'ADMIN') {
+            <!-- El monitor de correos es exclusivo de ADMIN (/api/correos/**) -->
+            <button type="button" (click)="irA('/dashboard/correos')" class="group relative overflow-hidden p-4 text-left bg-unibe-blue hover:bg-[#0d2a4f] border border-unibe-blue hover:-translate-y-1 hover:shadow-md transition-all duration-300 text-white rounded-xl flex flex-col justify-center">
+              <span class="block text-[10px] font-bold uppercase text-blue-200 group-hover:text-unibe-gold transition-colors">Sistema</span>
+              <strong class="block mt-1 text-xs">Monitor Correos</strong>
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-4 h-4 absolute bottom-4 right-4 text-blue-300 group-hover:translate-x-1 group-hover:text-unibe-gold transition-all"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" /></svg>
+            </button>
+          } @else {
+            <button type="button" (click)="irA('/dashboard/convocatorias')" class="group relative overflow-hidden p-4 text-left bg-unibe-blue hover:bg-[#0d2a4f] border border-unibe-blue hover:-translate-y-1 hover:shadow-md transition-all duration-300 text-white rounded-xl flex flex-col justify-center">
+              <span class="block text-[10px] font-bold uppercase text-blue-200 group-hover:text-unibe-gold transition-colors">Periodo</span>
+              <strong class="block mt-1 text-xs">Convocatorias y fechas</strong>
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-4 h-4 absolute bottom-4 right-4 text-blue-300 group-hover:translate-x-1 group-hover:text-unibe-gold transition-all"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" /></svg>
+            </button>
+          }
+        </div>
+      </div>
+
+      <div class="p-6 bg-white border border-slate-200 rounded-xl shadow-sm space-y-4">
+        <h3 class="text-sm font-bold text-unibe-blue uppercase tracking-wide border-b border-slate-100 pb-3">Fórmula Ponderada</h3>
+        <p class="text-xs text-slate-500 leading-relaxed">
+          Cálculo oficial de la nota del estudiante por parcial (sobre 10 pts):
+        </p>
+        <div class="p-5 bg-gradient-to-br from-unibe-blue to-[#0d2a4f] text-white rounded-xl text-center space-y-2 relative overflow-hidden shadow-inner">
+          <div class="absolute inset-x-0 bottom-0 h-1.5 bg-unibe-gold"></div>
+          <div class="absolute -right-4 -top-4 w-16 h-16 bg-white/5 rounded-full blur-xl"></div>
+          <div class="text-lg font-black tracking-wider text-unibe-gold drop-shadow-sm">(TUTOR × 50%)</div>
+          <div class="text-lg font-black tracking-wider drop-shadow-sm">+ (COORD × 50%)</div>
+        </div>
+        <p class="text-[9px] text-slate-400 font-medium text-center uppercase tracking-wide">
+          Auditoría de cambios registrada en BD
+        </p>
+      </div>
+    </div>
+
+    <!-- Dashboard analítico (datos de /api/reportes con alcance aplicado en backend) -->
+    <div class="grid grid-cols-1 lg:grid-cols-5 gap-6">
+      <div class="p-6 bg-white border border-slate-200 rounded-xl shadow-sm lg:col-span-2 space-y-4">
+        <div class="border-b border-slate-100 pb-3">
+          <h3 class="text-sm font-bold text-unibe-blue uppercase tracking-wide">Estado de Expedientes</h3>
+          <p class="mt-1 text-xs text-slate-500">Distribución de prácticas y vinculación por estado.</p>
+        </div>
+        @if (cargandoReportes()) {
+          <div class="h-64 flex items-center justify-center text-xs text-slate-400 font-medium">Cargando datos…</div>
+        } @else if (distribucionEstados().length > 0) {
+          <div class="relative h-64">
+            <canvas #chartEstados role="img" aria-label="Gráfico de anillo: distribución de expedientes por estado"></canvas>
+          </div>
+        } @else {
+          <div class="h-64 flex items-center justify-center text-xs text-slate-400 font-medium">Sin expedientes registrados en tu alcance.</div>
+        }
+      </div>
+
+      <div class="p-6 bg-white border border-slate-200 rounded-xl shadow-sm lg:col-span-3 space-y-4">
+        <div class="border-b border-slate-100 pb-3">
+          <h3 class="text-sm font-bold text-unibe-blue uppercase tracking-wide">Cupos Disponibles por Entidad</h3>
+          <p class="mt-1 text-xs text-slate-500">Empresas y proyectos con más cupos libres para asignar.</p>
+        </div>
+        @if (cargandoReportes()) {
+          <div class="h-64 flex items-center justify-center text-xs text-slate-400 font-medium">Cargando datos…</div>
+        } @else if (cuposPorEntidad().length > 0) {
+          <div class="relative h-64">
+            <canvas #chartCupos role="img" aria-label="Gráfico de barras: cupos disponibles por empresa o proyecto"></canvas>
+          </div>
+        } @else {
+          <div class="h-64 flex items-center justify-center text-xs text-slate-400 font-medium">No hay ofertas de cupos registradas.</div>
+        }
+      </div>
+    </div>
+
+    <!-- Exportación CSV de reportes oficiales -->
+    <div class="p-6 bg-white border border-slate-200 rounded-xl shadow-sm space-y-4">
+      <div class="border-b border-slate-100 pb-3 flex flex-wrap items-end justify-between gap-2">
+        <div>
+          <h3 class="text-sm font-bold text-unibe-blue uppercase tracking-wide">Exportar Reportes (CSV)</h3>
+          <p class="mt-1 text-xs text-slate-500">Descarga institucional con el alcance de tu rol. Para filtros avanzados usa <button type="button" class="text-unibe-blue font-bold hover:underline" (click)="irA('/dashboard/reportes')">Reportes</button>.</p>
+        </div>
+      </div>
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <button type="button" (click)="exportarReporte('ASIGNACIONES')" [disabled]="exportando() !== null"
+          class="min-h-12 px-3 text-xs font-bold rounded-lg border border-slate-200 text-slate-700 hover:border-unibe-blue hover:text-unibe-blue transition-colors disabled:opacity-50">
+          {{ exportando() === 'ASIGNACIONES' ? 'Generando…' : 'Asignaciones' }}
+        </button>
+        <button type="button" (click)="exportarReporte('CUPOS')" [disabled]="exportando() !== null"
+          class="min-h-12 px-3 text-xs font-bold rounded-lg border border-slate-200 text-slate-700 hover:border-unibe-blue hover:text-unibe-blue transition-colors disabled:opacity-50">
+          {{ exportando() === 'CUPOS' ? 'Generando…' : 'Cupos' }}
+        </button>
+        <button type="button" (click)="exportarReporte('RIESGOS')" [disabled]="exportando() !== null"
+          class="min-h-12 px-3 text-xs font-bold rounded-lg border border-slate-200 text-slate-700 hover:border-unibe-blue hover:text-unibe-blue transition-colors disabled:opacity-50">
+          {{ exportando() === 'RIESGOS' ? 'Generando…' : 'Riesgos' }}
+        </button>
+        <button type="button" (click)="exportarReporte('CIERRES')" [disabled]="exportando() !== null"
+          class="min-h-12 px-3 text-xs font-bold rounded-lg border border-slate-200 text-slate-700 hover:border-unibe-blue hover:text-unibe-blue transition-colors disabled:opacity-50">
+          {{ exportando() === 'CIERRES' ? 'Generando…' : 'Cierres' }}
+        </button>
+      </div>
+    </div>
+  } @else if (userRole() === 'ESTUDIANTE') {
+    <!-- Vista del Estudiante -->
+
+    <div class="p-5 bg-white border border-slate-200 rounded-lg shadow-sm flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+      <div>
+        <div class="flex items-center gap-2">
+          <span class="text-[10px] text-slate-500 font-bold uppercase">Proceso actual</span>
+          <span class="px-2 py-0.5 bg-unibe-blue/10 text-unibe-blue border border-unibe-blue/20 rounded-full text-[10px] font-bold">Periodo {{ periodoActual() }}</span>
+        </div>
+        <h3 class="mt-1 text-sm font-bold text-unibe-blue">{{ procesoActivo() === 'VINCULACION' ? 'Vinculación con la Comunidad' : 'Prácticas Preprofesionales' }}</h3>
+        <p class="mt-1 text-xs text-slate-500">Documentos, avance, bitácoras y pendientes de tu expediente.</p>
+      </div>
+      <button type="button" (click)="irAMiExpediente()" class="min-h-10 px-4 bg-unibe-blue text-white rounded-lg text-xs font-bold">Continuar expediente</button>
+    </div>
+
+    <!-- Línea de Progreso Académico Obligatorio -->
+    <div class="p-6 bg-white border border-slate-200 rounded-xl shadow-sm space-y-6">
+      <h3 class="text-sm font-bold text-unibe-blue uppercase tracking-wide">Progreso del Flujo Académico (Línea de Vida)</h3>
+      <div class="flex flex-col md:flex-row items-center justify-between gap-6 relative">
+        <!-- Connecting Line: base gris + segmentos que se pintan de verde cuando el paso previo ya está completado -->
+        <div class="absolute top-[28px] left-[10%] right-[10%] h-1 bg-slate-200 hidden md:block z-0"></div>
+        <div [class]="stepStatuses().vinculacion === 'completado' ? 'bg-green-600' : 'bg-slate-200'" class="absolute top-[28px] left-[10%] w-[40%] h-1 hidden md:block z-0 transition-colors duration-300"></div>
+        <div [class]="stepStatuses().practica1 === 'completado' ? 'bg-green-600' : 'bg-slate-200'" class="absolute top-[28px] left-[50%] w-[40%] h-1 hidden md:block z-0 transition-colors duration-300"></div>
+
+        <!-- Step 1 -->
+        <div class="group flex flex-col items-center text-center relative z-10 w-full md:w-1/3">
+          <div [class]="stepStatuses().vinculacion === 'completado' ? 'bg-green-600 text-white shadow-md group-hover:scale-110' : (stepStatuses().vinculacion === 'en_curso' ? 'bg-unibe-blue text-white ring-4 ring-unibe-blue/20 shadow-lg group-hover:scale-110 group-hover:ring-unibe-blue/40' : 'bg-slate-200 text-slate-400')" class="w-14 h-14 rounded-full flex items-center justify-center font-bold text-base transition-all duration-300 select-none">
+            @if (stepStatuses().vinculacion === 'completado') {
+              <svg class="h-6 w-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m5 12 4 4L19 6" /></svg>
+            } @else { 1 }
+          </div>
+          <h4 class="text-xs font-bold text-slate-800 mt-3 group-hover:text-unibe-blue transition-colors">Vinculación con la Sociedad</h4>
+          <span class="text-[10px] text-slate-500 font-semibold mt-1">160 Horas Obligatorias</span>
+          <span [class]="stepStatuses().vinculacion === 'completado' ? 'text-green-600 bg-green-50' : (stepStatuses().vinculacion === 'en_curso' ? 'text-unibe-blue bg-unibe-blue/10 border border-unibe-blue/20' : 'text-slate-400 bg-slate-100')" class="px-2 py-0.5 mt-2 rounded text-[10px] font-bold uppercase transition-all">
+            {{ estadoPasoTexto(stepStatuses().vinculacion) }}
+          </span>
+        </div>
+
+        <!-- Step 2 -->
+        <div class="group flex flex-col items-center text-center relative z-10 w-full md:w-1/3">
+          <div [class]="stepStatuses().practica1 === 'completado' ? 'bg-green-600 text-white shadow-md group-hover:scale-110' : (stepStatuses().practica1 === 'en_curso' ? 'bg-unibe-blue text-white ring-4 ring-unibe-blue/20 shadow-lg group-hover:scale-110 group-hover:ring-unibe-blue/40' : 'bg-slate-200 text-slate-400')" class="w-14 h-14 rounded-full flex items-center justify-center font-bold text-base transition-all duration-300 select-none">
+            @if (stepStatuses().practica1 === 'completado') {
+              <svg class="h-6 w-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m5 12 4 4L19 6" /></svg>
+            } @else { 2 }
+          </div>
+          <h4 class="text-xs font-bold text-slate-800 mt-3 group-hover:text-unibe-blue transition-colors">Práctica Preprofesional I</h4>
+          <span class="text-[10px] text-slate-500 font-semibold mt-1">120 Horas Obligatorias</span>
+          <span [class]="stepStatuses().practica1 === 'completado' ? 'text-green-600 bg-green-50' : (stepStatuses().practica1 === 'en_curso' ? 'text-unibe-blue bg-unibe-blue/10 border border-unibe-blue/20' : 'text-slate-400 bg-slate-100')" class="px-2 py-0.5 mt-2 rounded text-[10px] font-bold uppercase transition-all">
+            {{ estadoPasoTexto(stepStatuses().practica1) }}
+          </span>
+        </div>
+
+        <!-- Step 3 -->
+        <div class="group flex flex-col items-center text-center relative z-10 w-full md:w-1/3">
+          <div [class]="stepStatuses().practica2 === 'completado' ? 'bg-green-600 text-white shadow-md group-hover:scale-110' : (stepStatuses().practica2 === 'en_curso' ? 'bg-unibe-blue text-white ring-4 ring-unibe-blue/20 shadow-lg group-hover:scale-110 group-hover:ring-unibe-blue/40' : 'bg-slate-200 text-slate-400')" class="w-14 h-14 rounded-full flex items-center justify-center font-bold text-base transition-all duration-300 select-none">
+            @if (stepStatuses().practica2 === 'completado') {
+              <svg class="h-6 w-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m5 12 4 4L19 6" /></svg>
+            } @else { 3 }
+          </div>
+          <h4 class="text-xs font-bold text-slate-800 mt-3 group-hover:text-unibe-blue transition-colors">Práctica Preprofesional II</h4>
+          <span class="text-[10px] text-slate-500 font-semibold mt-1">120 Horas Obligatorias</span>
+          <span [class]="stepStatuses().practica2 === 'completado' ? 'text-green-600 bg-green-50' : (stepStatuses().practica2 === 'en_curso' ? 'text-unibe-blue bg-unibe-blue/10 border border-unibe-blue/20' : 'text-slate-400 bg-slate-100')" class="px-2 py-0.5 mt-2 rounded text-[10px] font-bold uppercase transition-all">
+            {{ estadoPasoTexto(stepStatuses().practica2) }}
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Datos de Asignación y Horas -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div class="p-6 bg-white border border-slate-200 rounded-xl shadow-sm lg:col-span-2 space-y-5">
+        <h3 class="text-sm font-bold text-unibe-blue uppercase tracking-wide border-b border-slate-100 pb-3">Detalle del Proceso Activo</h3>
+        <div class="grid grid-cols-2 gap-4 text-xs">
+          <div class="space-y-1">
+            <span class="text-[10px] text-slate-400 font-bold uppercase">Modalidad Activa</span>
+            <div class="font-bold text-slate-800 text-sm">
+              {{ currentStep() === 'VINCULACION' ? 'Vinculación Comunitaria' : (currentStep() === 'PRACTICA_1' ? 'Prácticas Preprofesionales I' : 'Prácticas Preprofesionales II') }}
+            </div>
+          </div>
+          <div class="space-y-1">
+            <span class="text-[10px] text-slate-400 font-bold uppercase">Entidad Receptora</span>
+            <div class="font-bold text-slate-800 text-sm">{{ assignedCompanyName() }}</div>
+          </div>
+          <div class="space-y-1">
+            <span class="text-[10px] text-slate-400 font-bold uppercase">Tutor Académico</span>
+            <div class="font-bold text-slate-800 text-sm">{{ assignedTutorName() }}</div>
+          </div>
+          <div class="space-y-1">
+            <span class="text-[10px] text-slate-400 font-bold uppercase">Horas Acumuladas</span>
+            <div class="font-bold text-slate-800 text-sm">{{ studentHours().completed }} / {{ studentHours().required }} Horas</div>
+          </div>
+        </div>
+
+        <div class="space-y-1.5 pt-2">
+          <div class="flex justify-between items-center text-xs font-bold text-slate-700">
+            <span>Progreso General</span>
+            <span>{{ ((studentHours().completed / studentHours().required) * 100) | number:'1.0-0' }}%</span>
+          </div>
+          <div class="w-full bg-slate-100 rounded-full h-3 border border-slate-200 overflow-hidden">
+            <div class="bg-unibe-blue h-3 rounded-full transition-all duration-500" [style.width.%]="(studentHours().completed / studentHours().required) * 100"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="p-6 bg-white border border-slate-200 rounded-xl shadow-sm space-y-4">
+        <h3 class="text-sm font-bold text-unibe-blue uppercase tracking-wide border-b border-slate-100 pb-3">Validación Documental Obligatoria</h3>
+        <p class="text-[10px] text-slate-500 leading-relaxed">
+          Estado real de tu documentación del proceso de {{ procesoActivo() === 'VINCULACION' ? 'Vinculación' : 'Prácticas' }}.
+          La gestionas en la sección correspondiente del menú.
+        </p>
+        <div class="space-y-2 text-xs">
+          @for (doc of documentosChecklist(); track doc.label) {
+            <div [class]="estadoDocClase(doc.estado)" class="flex justify-between items-center p-2.5 border rounded-lg">
+              <span class="font-semibold">{{ doc.label }}</span>
+              <span class="text-[10px] bg-white/80 px-2 py-0.5 rounded font-bold uppercase">{{ estadoDocTexto(doc.estado) }}</span>
+            </div>
+          }
+        </div>
+      </div>
+    </div>
+
+    <!-- Calificaciones y Encuestas por Parcial -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div class="p-6 bg-white border border-slate-200 rounded-xl shadow-sm lg:col-span-2 space-y-4">
+        <h3 class="text-sm font-bold text-unibe-blue uppercase tracking-wide border-b border-slate-100 pb-3">Registro de Calificaciones (Sobre 30)</h3>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs border-collapse">
+            <thead>
+              <tr class="border-b border-slate-200 font-bold text-slate-500 uppercase tracking-wide">
+                <th class="py-2.5">Parcial</th>
+                <th class="py-2.5 text-center">Nota Tutor (50%)</th>
+                <th class="py-2.5 text-center">Nota Coordinador (50%)</th>
+                <th class="py-2.5 text-center">Promedio Parcial</th>
+                <th class="py-2.5 text-center">Encuesta de Pertinencia</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100 text-slate-700">
+              @for (grade of parcialesGrades(); track grade.parcial) {
+                <tr class="hover:bg-slate-50/50">
+                  <td class="py-3 font-semibold">Parcial {{ grade.parcial }}</td>
+                  <!-- La nota se revela solo tras completar la encuesta del parcial (misma regla que "Mi avance") -->
+                  <td class="py-3 text-center font-mono font-semibold" [title]="grade.tutor > 0 && !grade.surveyCompleted ? 'Completa la encuesta para ver tu nota' : ''">
+                    {{ grade.tutor > 0 ? (grade.surveyCompleted ? (grade.tutor | number:'1.2-2') : '🔒') : '-' }}
+                  </td>
+                  <td class="py-3 text-center font-mono font-semibold" [title]="grade.coordinador > 0 && !grade.surveyCompleted ? 'Completa la encuesta para ver tu nota' : ''">
+                    {{ grade.coordinador > 0 ? (grade.surveyCompleted ? (grade.coordinador | number:'1.2-2') : '🔒') : '-' }}
+                  </td>
+                  <td class="py-3 text-center font-mono font-bold text-unibe-blue" [title]="grade.final > 0 && !grade.surveyCompleted ? 'Completa la encuesta para ver tu nota' : ''">
+                    {{ grade.final > 0 ? (grade.surveyCompleted ? (grade.final | number:'1.2-2') : '🔒') : '-' }}
+                  </td>
+                  <td class="py-3 text-center">
+                    <span [class]="grade.surveyCompleted ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'" class="px-2 py-0.5 rounded text-[10px] font-bold">
+                      {{ grade.surveyCompleted ? 'COMPLETADA' : 'PENDIENTE' }}
+                    </span>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="p-6 bg-white border border-slate-200 rounded-xl shadow-sm space-y-4">
+        <h3 class="text-sm font-bold text-unibe-blue uppercase tracking-wide border-b border-slate-100 pb-3">Encuestas de Pertinencia Pendientes</h3>
+        <p class="text-[10px] text-slate-500 leading-relaxed">
+          Debes completar la encuesta obligatoria por cada parcial para habilitar la visualización de tus calificaciones oficiales.
+        </p>
+        <div class="space-y-3">
+          @for (grade of encuestasPendientes(); track grade.parcial) {
+            <button type="button" (click)="irAMiExpediente()" class="w-full text-left p-3 border border-slate-200 hover:border-unibe-blue rounded-xl flex items-center justify-between gap-3 transition-all cursor-pointer bg-slate-50 hover:bg-slate-100/50">
+              <div class="space-y-0.5">
+                <div class="text-xs font-bold text-slate-800">Encuesta de Pertinencia Parcial {{ grade.parcial }}</div>
+                <div class="text-[10px] text-slate-400 font-semibold">Tus notas ya están registradas: completa la encuesta para verlas</div>
+              </div>
+              <div class="text-[10px] font-bold text-unibe-blue bg-unibe-blue/10 px-2 py-1 rounded">
+                Llenar
+              </div>
+            </button>
+          } @empty {
+            <div class="p-3 bg-green-50 border border-green-200 rounded-xl text-green-800 text-xs font-semibold">
+              No tienes encuestas pendientes por ahora.
+            </div>
+          }
+        </div>
+      </div>
+    </div>
+  }
+</div>

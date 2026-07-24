@@ -1,0 +1,1976 @@
+<div class="space-y-6">
+  <!-- Section Title -->
+  <div class="bg-white p-5 border border-slate-200 rounded-xl shadow-sm flex justify-between items-center animate-fade-in">
+    <div>
+      <h2 class="text-base font-bold text-unibe-blue uppercase tracking-wide">Gestión de Prácticas Preprofesionales</h2>
+      <p class="text-xs text-slate-500 font-medium">Administración meritocrática, carga documental y rúbricas de evaluación UNIBE.</p>
+    </div>
+  </div>
+
+  <app-bandeja-tabs [tabs]="tabsVisibles()" [activeTab]="activeTab()" (tabChange)="cambiarTab($event)" />
+
+  <!-- TAB CONTENT -->
+  <div class="bg-white border border-slate-200 rounded-xl p-6 shadow-sm">
+    @if (loading()) {
+      <div class="flex justify-center items-center py-20">
+        <svg class="animate-spin h-8 w-8 text-unibe-blue" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+      </div>
+    } @else {
+      <!-- COORDINADOR TABS -->
+      @if (activeTab() === 'documentos_revision') {
+        <app-documentos-revision-panel
+          [documentos]="documentosRevision()"
+          [carreras]="carrerasParaRevision()"
+          [proceso]="filtroDocProceso"
+          [estado]="filtroDocEstado"
+          [carrera]="filtroDocCarrera"
+          [observaciones]="observacionRevision"
+          [cargando]="cargandoDocumentosRevision()"
+          [accionEnCurso]="accionDocumentoRevision()"
+          (filtrosChange)="cambiarFiltrosDocumentos($event)"
+          (actualizar)="loadDocumentosRevision()"
+          (ver)="abrirDocumentoRevision($event)"
+          (aprobar)="aprobarDocumento($event)"
+          (corregir)="solicitarCorreccionDocumento($event)"
+        />
+      }
+      
+      <!-- Tab 1: Asignaciones Activas -->
+      @if (activeTab() === 'lista') {
+        <div class="space-y-6">
+          <div class="flex justify-between items-center bg-white border border-slate-200 rounded-xl shadow-sm p-4 flex-wrap gap-3">
+            <h3 class="text-sm font-bold text-slate-800 uppercase tracking-wide">Expedientes de Prácticas de Mis Carreras</h3>
+            <form (ngSubmit)="busquedaLista($event)" class="flex gap-4 text-xs">
+              <label class="min-w-[200px]">
+                <input type="text" [ngModel]="searchText()" (ngModelChange)="searchText.set($event)" name="searchLista" placeholder="Buscar estudiante, matrícula o empresa..." class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 outline-none focus:border-unibe-blue" />
+              </label>
+              <select [(ngModel)]="filtroEstado" name="estadoLista" (change)="busquedaLista()" class="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-700 outline-none focus:border-unibe-blue">
+                <option value="TODOS">Todos los Estados</option>
+                <option value="EN_CURSO">En Curso</option>
+                <option value="COMPLETADO">Completado</option>
+                <option value="RETIRADO">Retirado</option>
+                <option value="REPROBADO">Reprobado</option>
+              </select>
+              <button type="submit" class="px-4 py-1.5 bg-unibe-blue hover:bg-unibe-blue-hover text-white rounded-lg shadow font-bold transition-all">Buscar</button>
+              <button type="button" (click)="verHistorialCompleto()" title="Quita el filtro de estado y de periodo académico" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg font-bold border border-slate-200 transition-all">Ver historial completo</button>
+            </form>
+          </div>
+
+          @if (cargandoLista()) {
+            <div class="flex justify-center items-center py-10">
+              <svg class="animate-spin h-6 w-6 text-unibe-blue" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+            </div>
+          } @else {
+
+          <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs border-collapse">
+            <thead>
+              <tr class="border-b border-slate-200 text-slate-400 font-bold uppercase bg-slate-50/50">
+                <th class="p-4">Estudiante</th>
+                <th class="p-4">Carrera</th>
+                <th class="p-4">Empresa</th>
+                <th class="p-4">Tutor Asignado</th>
+                <th class="p-4 text-center">Horas</th>
+                <th class="p-4 text-center">Calificación Final (30)</th>
+                <th class="p-4">Estado</th>
+                <th class="p-4 text-center">Acción</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100 text-slate-700">
+              @for (prac of filteredPracticas(); track prac.id) {
+                <tr class="hover:bg-slate-50/50">
+                  <td class="p-4 font-bold text-slate-800">
+                    {{ prac.estudiante.usuario.nombre }} {{ prac.estudiante.usuario.apellido }}
+                    <div class="text-[10px] text-slate-400 font-mono">{{ prac.estudiante.matricula }}</div>
+                  </td>
+                  <td class="p-4 font-medium text-slate-500">{{ prac.estudiante.carrera }}</td>
+                  <td class="p-4 font-semibold text-slate-600">{{ prac.empresa.nombre }}</td>
+                  <td class="p-4 text-slate-500">
+                    @if (userRole() === 'ADMIN' || userRole() === 'COORDINADOR') {
+                      <select [ngModel]="prac.tutor?.id ?? null" (ngModelChange)="asignarTutor(prac, $event)"
+                              class="px-2 py-1.5 bg-white border border-slate-200 rounded-lg outline-none focus:border-unibe-blue text-slate-700 text-[11px]"
+                              [class.border-amber-300]="!prac.tutor" [class.bg-amber-50]="!prac.tutor">
+                        <option [ngValue]="null" disabled>Asignar tutor...</option>
+                        @if (prac.tutor && !tutorCompatibleConPractica(prac).length) {
+                          <option [ngValue]="prac.tutor.id">{{ prac.tutor.nombre }} {{ prac.tutor.apellido }} (configuración anterior)</option>
+                        }
+                        @for (vinculo of tutorCompatibleConPractica(prac); track vinculo.id) {
+                          <option [ngValue]="vinculo.tutorId">{{ vinculo.nombre }} {{ vinculo.apellido }}</option>
+                        }
+                      </select>
+                    } @else {
+                      {{ prac.tutor ? (prac.tutor.nombre + ' ' + prac.tutor.apellido) : 'Sin asignar' }}
+                    }
+                  </td>
+                  <td class="p-4 text-center">
+                    <span class="font-bold text-slate-800">{{ prac.horasCompletadas }} / {{ prac.horasRequeridas }} h</span>
+                    <div class="w-20 bg-slate-100 h-1 rounded-full mx-auto mt-1 overflow-hidden">
+                      <div class="bg-unibe-blue h-1" [style.width.%]="((prac.horasCompletadas || 0) / prac.horasRequeridas) * 100"></div>
+                    </div>
+                  </td>
+                  <td class="p-4 text-center font-bold text-unibe-blue font-mono text-sm">
+                    {{ getGrades(prac.id!).total > 0 ? (getGrades(prac.id!).total | number:'1.2-2') : '-' }}
+                  </td>
+                  <td class="p-4">
+                    <span [class]="prac.estado === 'completado' ? 'bg-green-50 border-green-200 text-green-700' : 'bg-blue-50 border-blue-200 text-unibe-blue'" class="px-2.5 py-0.5 border rounded-full text-[10px] font-bold uppercase">
+                      {{ estadoTexto(prac.estado) }}
+                    </span>
+                    @if (puedeLiberarCupo(prac)) {
+                      <button (click)="abrirLiberarCupo(prac)" title="Devuelve el cupo del retiro a la empresa para asignar un reemplazo" class="ml-2 px-3 py-1.5 bg-amber-50 border border-amber-200 text-amber-800 hover:bg-amber-100 rounded-lg font-bold text-[10px]">
+                        Liberar cupo
+                      </button>
+                    } @else if (prac.cupoLiberado) {
+                      <span class="ml-2 px-2 py-0.5 bg-slate-100 border border-slate-200 text-slate-500 rounded-full text-[9px] font-bold uppercase">Cupo liberado</span>
+                    }
+                    @if (puedeContinuar(prac)) {
+                      <button type="button" (click)="prepararContinuidad(prac)" title="Preparar una nueva Práctica II con la misma empresa" class="ml-2 min-h-9 rounded-lg border border-unibe-blue px-3 text-[10px] font-bold text-unibe-blue hover:bg-blue-50">
+                        Continuar en Práctica II
+                      </button>
+                    }
+                  </td>
+                  <td class="p-4 text-center">
+                    <button type="button" (click)="abrirComunicaciones(prac)" class="min-h-9 rounded-lg border border-unibe-blue px-3 text-[10px] font-bold text-unibe-blue hover:bg-blue-50">Comunicaciones</button>
+                  </td>
+                </tr>
+              } @empty {
+                <tr>
+                  <td colspan="8" class="p-8 text-center text-slate-400 font-medium">No hay prácticas asignadas que coincidan con los filtros actuales.</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+          </div>
+
+          <app-paginador
+            [pagina]="paginaLista()"
+            [tamano]="tamanoPaginaLista()" 
+            [totalElementos]="totalElementosLista()"
+            [totalPaginas]="totalPaginasLista()" 
+            (cambiar)="cambioPaginaLista($event)">
+          </app-paginador>
+          }
+        </div>
+      }
+
+      <!-- Tab 1B: Seguimiento Coordinador -->
+      @if (activeTab() === 'seguimiento_coord') {
+        <div class="space-y-6">
+          <div class="flex justify-between items-center bg-white border border-slate-200 rounded-xl shadow-sm p-4 flex-wrap gap-3">
+            <h3 class="text-sm font-bold text-slate-800 uppercase tracking-wide">Panel de Seguimiento y Cierres (Prácticas)</h3>
+            <!-- El filtro por estado/alertas vive dentro del panel ("Estado del expediente") -->
+            <form (ngSubmit)="busquedaLista($event)" class="flex gap-4 text-xs">
+              <label class="min-w-[200px]">
+                <input type="text" [ngModel]="searchText()" (ngModelChange)="searchText.set($event)" name="searchSeguimiento" placeholder="Buscar estudiante, matrícula..." class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 outline-none focus:border-unibe-blue" />
+              </label>
+              <button type="submit" class="px-4 py-1.5 bg-unibe-blue hover:bg-unibe-blue-hover text-white rounded-lg shadow font-bold transition-all">Buscar</button>
+            </form>
+          </div>
+
+          @if (cargandoSeguimiento()) {
+            <div class="flex justify-center items-center py-10">
+              <svg class="animate-spin h-6 w-6 text-unibe-blue" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+            </div>
+          } @else {
+            <app-seguimiento-academico-panel
+              proceso="PRACTICAS"
+              [items]="seguimiento()"
+              [filtro]="filtroSeguimiento()"
+              [cerrandoId]="cerrandoPracticaId()"
+              [cargandoActaId]="cargandoActaPracticaId()"
+              (filtroChange)="filtroSeguimiento.set($event)"
+              (cerrar)="cerrarPractica($event)"
+              (abrirActa)="abrirActaPractica($event)"
+            />
+            
+            <app-paginador 
+              [pagina]="paginaSeguimiento()" 
+              [tamano]="tamanoPaginaSeguimiento()" 
+              [totalElementos]="totalElementosSeguimiento()"
+              [totalPaginas]="totalPaginasSeguimiento()" 
+              (cambiar)="cambioPaginaSeguimiento($event)">
+            </app-paginador>
+          }
+        </div>
+      }
+
+      <!-- Tab 2: Meritocracy Assignment Panel -->
+      @if (activeTab() === 'meritocracia') {
+        <div class="space-y-6">
+          <div class="flex flex-col md:flex-row justify-between items-start md:items-center bg-slate-50 p-4 border border-slate-200 rounded-xl gap-4">
+            <div>
+              <h3 class="text-sm font-bold text-unibe-blue uppercase tracking-wide">Asignación por Meritocracia Académica</h3>
+              <p class="text-[10px] text-slate-500 font-medium">Algoritmo prioritario: Promedio (70%) + Documentos Completos (30%). Puntuación Máxima: 10.00.</p>
+            </div>
+            <div class="flex gap-2">
+              <button (click)="calcularAsignacionAutomatica()" [disabled]="calculandoAsignacion()" class="px-3.5 py-2 bg-unibe-blue hover:bg-unibe-blue-hover text-white text-xs font-bold rounded-lg shadow transition-all disabled:opacity-60 disabled:cursor-not-allowed">
+                {{ calculandoAsignacion() ? 'Calculando…' : 'Calcular Asignación Automática' }}
+              </button>
+              <button (click)="aprobarAsignacionesDefinitivas()" [disabled]="aprobandoDefinitivas()" class="px-3.5 py-2 bg-green-600 hover:bg-green-700 text-white text-xs font-bold rounded-lg shadow transition-all disabled:opacity-60 disabled:cursor-not-allowed">
+                {{ aprobandoDefinitivas() ? 'Consolidando…' : 'Aprobación Definitiva' }}
+              </button>
+            </div>
+          </div>
+
+          <!-- Applications Rank Table -->
+          <div class="bg-white border border-slate-200 rounded-xl overflow-x-auto">
+            <table class="w-full text-left text-xs border-collapse">
+              <thead>
+                <tr class="border-b border-slate-200 text-slate-400 font-bold uppercase bg-slate-50">
+                  <th class="p-4">Rank</th>
+                  <th class="p-4">Estudiante</th>
+                  <th class="p-4">Promedio</th>
+                  <th class="p-4 text-center">Score Meritocrático</th>
+                  <th class="p-4">Prioridades Elegidas</th>
+                  <th class="p-4">Empresa Asignada</th>
+                  <th class="p-4">Tutor externo</th>
+                  <th class="p-4 text-right">Acciones</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-slate-100 text-slate-700">
+                @for (post of getFilteredPostulaciones(); track post.id; let idx = $index) {
+                  <tr class="hover:bg-slate-50/50">
+                    <td class="p-4 font-mono font-bold text-slate-500 text-center">{{ idx + 1 }}</td>
+                    <td class="p-4">
+                      <div class="font-bold text-slate-800">{{ postNombre(post) }}</div>
+                      <div class="text-[9px] text-slate-400 font-mono">{{ post.estudiante.carrera }}</div>
+                    </td>
+                    <td class="p-4 font-mono font-bold text-slate-650">{{ post.promedio | number:'1.2-2' }}</td>
+                    <td class="p-4 text-center font-mono font-bold text-unibe-blue bg-unibe-blue/5">{{ post.score | number:'1.2-2' }}</td>
+                    <td class="p-4 space-y-1">
+                      <div class="text-[10px]"><span class="font-bold text-slate-400">1:</span> {{ vacLabel(post.pref1) }}</div>
+                      <div class="text-[10px]"><span class="font-bold text-slate-400">2:</span> {{ vacLabel(post.pref2) }}</div>
+                      @if (post.pref3) {
+                        <div class="text-[10px]"><span class="font-bold text-slate-400">3:</span> {{ vacLabel(post.pref3) }}</div>
+                      }
+                    </td>
+                    <td class="p-4 font-bold" [class.text-green-600]="post.asignadoEmpresa" [class.text-red-500]="!post.asignadoEmpresa">
+                      {{ post.asignadoEmpresa?.nombre || 'Sin asignar' }}
+                      @if (post.ajustadoManualmente) {
+                        <span class="block text-[8px] bg-amber-100 border border-amber-200 text-amber-800 font-bold px-1.5 py-0.5 rounded w-max mt-1 uppercase">Ajuste Manual</span>
+                      }
+                      @if (post.asignadoEmpresa && motivoConvenioPostulacion(post); as motivoConvenio) {
+                        <span class="block text-[8px] bg-red-50 border border-red-200 text-red-700 font-bold px-1.5 py-0.5 rounded w-max mt-1 uppercase">{{ motivoConvenio }}</span>
+                      }
+                    </td>
+                    <td class="p-4 min-w-52">
+                      @if (post.estado === 'Procesado' && post.id) {
+                        <select [ngModel]="tutorMeritocraciaSeleccionado()[post.id]"
+                                (ngModelChange)="seleccionarTutorMeritocracia(post.id!, $event)"
+                                class="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-[10px] text-slate-700 outline-none focus:border-unibe-blue">
+                          <option [ngValue]="null" disabled>Selecciona tutor compatible...</option>
+                          @for (vinculo of tutoresMeritocracia()[post.id] || []; track vinculo.id) {
+                            <option [ngValue]="vinculo.tutorId">{{ vinculo.nombre }} {{ vinculo.apellido }}{{ vinculo.cargo ? ' · ' + vinculo.cargo : '' }}</option>
+                          }
+                        </select>
+                        @if ((tutoresMeritocracia()[post.id] || []).length === 0) {
+                          <p class="mt-1 text-[9px] font-medium text-amber-700">Configura un tutor para esta empresa y carrera.</p>
+                        }
+                      } @else {
+                        <span class="text-[10px] text-slate-400">Se habilita al procesar</span>
+                      }
+                    </td>
+                    <td class="p-4 text-right">
+                      <button (click)="openAjusteModal(post)" class="px-2.5 py-1 bg-slate-100 hover:bg-unibe-blue hover:text-white border border-slate-200 text-[10px] font-bold rounded transition-all">
+                        Ajuste Manual
+                      </button>
+                    </td>
+                  </tr>
+                } @empty {
+                  <tr>
+                    <td colspan="8" class="p-8 text-center text-slate-400 font-medium">No hay postulaciones meritocráticas para procesar. Aparecerán aquí cuando los estudiantes envíen sus preferencias dentro de la convocatoria vigente.</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Audit Log Section -->
+          @if (auditLogs().length > 0) {
+            <div class="p-5 border border-slate-200 rounded-xl bg-slate-50 space-y-3">
+              <h4 class="text-xs font-bold text-unibe-blue uppercase tracking-wide">Bitácora de Auditoría (Trazabilidad de Asignaciones)</h4>
+              <div class="space-y-1.5 font-mono text-[10px] text-slate-600">
+                @for (log of auditLogs(); track log.id) {
+                  <div class="p-2 bg-white border border-slate-150 rounded flex justify-between gap-4">
+                    <span><strong>[{{ log.fecha }}] {{ log.usuario }}</strong>: {{ log.accion }} - {{ log.detalle }}</span>
+                  </div>
+                }
+              </div>
+            </div>
+          }
+        </div>
+      }
+
+      <!-- Tab 3: Convocatorias & Vacantes (Coordinator View) -->
+      @if (activeTab() === 'vacantes') {
+        <div class="space-y-6">
+          <div class="p-5 bg-slate-50 border border-slate-200 rounded-xl animate-fade-in space-y-4">
+            <div class="flex items-center justify-between gap-4 flex-wrap">
+              <h3 class="text-xs font-bold text-unibe-blue uppercase tracking-wide">Convocatoria vigente de Prácticas</h3>
+              @if (userRole() === 'ADMIN') {
+                <a routerLink="/dashboard/convocatorias" class="px-3 py-1.5 bg-unibe-blue text-white text-[10px] font-bold rounded-lg hover:bg-unibe-blue-hover shadow uppercase tracking-wide">Configurar fechas</a>
+              } @else {
+                <span class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">🔒 Fechas definidas por Administración</span>
+              }
+            </div>
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div class="bg-white border border-slate-150 rounded-lg p-3">
+                <span class="block text-[9px] text-slate-400 font-bold uppercase mb-1">Inicio convocatoria</span>
+                <span class="font-mono text-xs font-bold text-slate-700">{{ convocatoriaInicio || '—' }}</span>
+              </div>
+              <div class="bg-white border border-slate-150 rounded-lg p-3">
+                <span class="block text-[9px] text-slate-400 font-bold uppercase mb-1">Límite documentos</span>
+                <span class="font-mono text-xs font-bold text-slate-700">{{ fechaLimiteDocumentos || '—' }}</span>
+              </div>
+              <div class="bg-white border border-amber-200 rounded-lg p-3">
+                <span class="block text-[9px] text-amber-600 font-bold uppercase mb-1">📅 Apertura postulación</span>
+                <span class="font-mono text-xs font-bold text-amber-700">{{ fechaInicioPostulacion || '—' }}</span>
+              </div>
+              <div class="bg-white border border-slate-150 rounded-lg p-3">
+                <span class="block text-[9px] text-slate-400 font-bold uppercase mb-1">Cierre convocatoria</span>
+                <span class="font-mono text-xs font-bold text-slate-700">{{ convocatoriaFin || '—' }}</span>
+              </div>
+            </div>
+            <p class="text-[10px] text-slate-400">
+              Las fechas de Prácticas y Vinculación se administran en la sección <strong>Convocatorias</strong> del menú.
+            </p>
+          </div>
+
+          <hr class="border-slate-200" />
+
+          <div class="flex flex-col gap-4">
+            <div class="flex justify-between items-center">
+              <h3 class="text-sm font-bold text-slate-800 uppercase tracking-wide">Vacantes y cupos reservados del periodo actual</h3>
+              <button (click)="openVacanteModal()" class="px-3 py-2 bg-unibe-blue text-white text-xs font-bold rounded-lg hover:bg-unibe-blue-hover shadow">Nueva Vacante</button>
+            </div>
+            <div class="bg-white border border-slate-200 rounded-xl shadow-sm p-4 flex flex-wrap items-end gap-3 text-xs">
+              <label class="flex-1 min-w-[200px]">
+                <span class="mb-1.5 block text-[10px] font-bold uppercase text-slate-500">Buscar</span>
+                <input type="text" [ngModel]="searchText()" (ngModelChange)="searchText.set($event)" placeholder="Buscar vacante..." class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 outline-none focus:border-unibe-blue" />
+              </label>
+              <label class="min-w-[150px]">
+                <span class="mb-1.5 block text-[10px] font-bold uppercase text-slate-500">Empresa</span>
+                <select [ngModel]="filtroVacanteEmpresa()" (ngModelChange)="filtroVacanteEmpresa.set($event)" class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 outline-none focus:border-unibe-blue">
+                  <option value="TODOS">Todas</option>
+                  @for (emp of empresas(); track emp.id) {
+                    <option [value]="emp.id">{{ emp.nombre }}</option>
+                  }
+                </select>
+              </label>
+              <label class="min-w-[150px]">
+                <span class="mb-1.5 block text-[10px] font-bold uppercase text-slate-500">Carrera</span>
+                <select [ngModel]="filtroVacanteCarrera()" (ngModelChange)="filtroVacanteCarrera.set($event)" class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 outline-none focus:border-unibe-blue">
+                  <option value="TODOS">Todas</option>
+                  @for (c of carrerasCatalogo(); track c.id) {
+                    <option [value]="c.nombre">{{ c.nombre }}</option>
+                  }
+                </select>
+              </label>
+              <label class="min-w-[150px]">
+                <span class="mb-1.5 block text-[10px] font-bold uppercase text-slate-500">Modalidad</span>
+                <select [ngModel]="filtroVacanteModalidad()" (ngModelChange)="filtroVacanteModalidad.set($event)" class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 outline-none focus:border-unibe-blue">
+                  <option value="TODOS">Todas</option>
+                  <option value="Práctica I">Práctica I</option>
+                  <option value="Práctica II">Práctica II</option>
+                </select>
+              </label>
+            </div>
+          </div>
+
+          <div class="overflow-x-auto">
+            <table class="w-full min-w-[980px] text-left text-xs border-collapse">
+              <thead>
+                <tr class="border-b border-slate-200 text-slate-400 font-bold uppercase bg-slate-50">
+                  <th class="p-4">Nombre de la Vacante</th>
+                  <th class="p-4">Empresa / Institución Receptora</th>
+                  <th class="p-4">Carrera Autorizada</th>
+                  <th class="p-4 text-center">Horas</th>
+                  <th class="p-4 text-center">Cupos</th>
+                  <th class="p-4">Modalidad Académica</th>
+                  <th class="p-4">Estado</th>
+                  <th class="p-4 text-right">Acciones</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-slate-100 text-slate-700">
+                @for (vac of getFilteredVacantes(); track vac.id) {
+                  <tr class="hover:bg-slate-50/50">
+                    <td class="p-4 font-bold text-slate-800">{{ vac.nombre }}</td>
+                    <td class="p-4 font-semibold">{{ vac.empresa.nombre }}</td>
+                    <td class="p-4 font-semibold text-slate-500">{{ vac.carrera }}</td>
+                    <td class="p-4 text-center font-mono font-semibold">{{ vac.horas }} h</td>
+                    <td class="p-4 text-center font-mono font-bold text-green-600 bg-green-50/20">{{ vac.cupos }}</td>
+                    <td class="p-4 font-bold text-unibe-blue">{{ vac.modalidadAcademica }}</td>
+                    <td class="p-4">
+                      <span [class]="vac.activa !== false ? 'text-green-700 bg-green-50 border-green-200' : 'text-amber-700 bg-amber-50 border-amber-200'" class="px-2 py-0.5 border text-[10px] font-bold rounded-full">
+                        {{ vac.activa !== false ? 'Abierta' : 'Pausada' }}
+                      </span>
+                    </td>
+                    <td class="p-4 text-right space-x-2 whitespace-nowrap">
+                      <button (click)="openEditVacanteModal(vac)" class="text-unibe-blue hover:text-unibe-blue-hover text-xs font-bold underline underline-offset-2">Editar</button>
+                      <button (click)="duplicarVacante(vac)" title="Copia descripción y condiciones; los cupos se definen de nuevo" class="text-slate-600 hover:text-unibe-blue text-xs font-bold underline underline-offset-2">Duplicar</button>
+                      <button (click)="togglePausaVacante(vac)" [disabled]="pausandoVacanteId() !== null" class="text-xs font-bold underline underline-offset-2 disabled:opacity-50" [class]="vac.activa !== false ? 'text-amber-700 hover:text-amber-800' : 'text-green-700 hover:text-green-800'">
+                        {{ pausandoVacanteId() === vac.id ? 'Guardando…' : (vac.activa !== false ? 'Pausar' : 'Reactivar') }}
+                      </button>
+                    </td>
+                  </tr>
+                } @empty {
+                  <tr>
+                    <td colspan="8" class="p-8 text-center text-slate-400 font-medium">No hay vacantes registradas para el periodo vigente. Crea la primera con «Nueva Vacante».</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </div>
+      }
+
+      <!-- Tab 4: Carga de Notas & Plazos -->
+      @if (activeTab() === 'calificaciones_adm') {
+        <div class="space-y-6">
+          @if (userRole() === 'ADMIN' || userRole() === 'COORDINADOR') {
+            <h3 class="text-sm font-bold text-slate-800 uppercase tracking-wide border-b border-slate-100 pb-3">Fechas Límite para Carga de Notas por Parcial</h3>
+            <div class="grid grid-cols-3 gap-6 p-5 bg-slate-50 border border-slate-200 rounded-xl">
+              <div>
+                <label class="block text-xs font-bold text-slate-600 uppercase mb-2">Límite Parcial 1</label>
+                <input type="date" [(ngModel)]="gradeDeadlines().parcial1" [disabled]="userRole() !== 'ADMIN'" class="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-slate-800 text-xs outline-none focus:border-unibe-blue disabled:bg-slate-100 disabled:text-slate-400" />
+              </div>
+              <div>
+                <label class="block text-xs font-bold text-slate-600 uppercase mb-2">Límite Parcial 2</label>
+                <input type="date" [(ngModel)]="gradeDeadlines().parcial2" [disabled]="userRole() !== 'ADMIN'" class="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-slate-800 text-xs outline-none focus:border-unibe-blue disabled:bg-slate-100 disabled:text-slate-400" />
+              </div>
+              <div>
+                <label class="block text-xs font-bold text-slate-600 uppercase mb-2">Límite Parcial 3</label>
+                <input type="date" [(ngModel)]="gradeDeadlines().parcial3" [disabled]="userRole() !== 'ADMIN'" class="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-slate-800 text-xs outline-none focus:border-unibe-blue disabled:bg-slate-100 disabled:text-slate-400" />
+              </div>
+              @if (userRole() === 'ADMIN') {
+                <div class="col-span-3 flex justify-end">
+                  <button (click)="saveGradeDeadlines()" class="px-4 py-2 bg-unibe-blue text-white text-xs font-bold rounded-lg shadow hover:bg-unibe-blue-hover transition-all">Guardar Plazos de Calificación</button>
+                </div>
+              } @else {
+                <div class="col-span-3 flex justify-end text-[10px] text-slate-400 font-bold uppercase tracking-wider">
+                  Fechas definidas por Administración
+                </div>
+              }
+            </div>
+          }
+
+          <hr class="border-slate-200" />
+
+          <div class="flex flex-col gap-4">
+            <h3 class="text-sm font-bold text-slate-800 uppercase tracking-wide">Calificación del Coordinador por Alumno</h3>
+            <div class="bg-white border border-slate-200 rounded-xl shadow-sm p-4 flex flex-wrap items-end gap-3 text-xs">
+              <label class="min-w-[150px]">
+                <span class="mb-1.5 block text-[10px] font-bold uppercase text-slate-500">Periodo Académico</span>
+                <input type="text" [ngModel]="filtroSeguimientoPeriodo()" (ngModelChange)="filtroSeguimientoPeriodo.set($event); filtrarSeguimiento()" placeholder="Ej. 2026-1" class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 outline-none focus:border-unibe-blue" />
+              </label>
+              <label class="min-w-[150px]">
+                <span class="mb-1.5 block text-[10px] font-bold uppercase text-slate-500">Carrera</span>
+                <select [ngModel]="filtroSeguimientoCarrera()" (ngModelChange)="filtroSeguimientoCarrera.set($event); filtrarSeguimiento()" class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 outline-none focus:border-unibe-blue">
+                  <option value="TODOS">Todas</option>
+                  @for (c of carrerasCatalogo(); track c.id) {
+                    <option [value]="c.nombre">{{ c.nombre }}</option>
+                  }
+                </select>
+              </label>
+              <label class="min-w-[150px]">
+                <span class="mb-1.5 block text-[10px] font-bold uppercase text-slate-500">Tutor Asignado</span>
+                <select [ngModel]="filtroSeguimientoTutor()" (ngModelChange)="filtroSeguimientoTutor.set($event); filtrarSeguimiento()" class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 outline-none focus:border-unibe-blue">
+                  <option value="TODOS">Todos</option>
+                  @for (t of tutores(); track t.id) {
+                    <option [value]="t.id">{{ t.nombre }} {{ t.apellido }}</option>
+                  }
+                </select>
+              </label>
+            </div>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs border-collapse">
+              <thead>
+                <tr class="border-b border-slate-200 text-slate-400 font-bold uppercase bg-slate-50">
+                  <th class="p-4">Estudiante</th>
+                  <th class="p-4 text-center">Parcial 1 (10)</th>
+                  <th class="p-4 text-center">Parcial 2 (10)</th>
+                  <th class="p-4 text-center">Parcial 3 (10)</th>
+                  <th class="p-4 text-center">Total (30)</th>
+                  <th class="p-4 text-center">Seguimiento</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-slate-100 text-slate-700">
+                @for (seg of seguimientoFiltrado(); track seg.practicaId) {
+                  <tr class="hover:bg-slate-50/50">
+                    <td class="p-4 font-bold">{{ seg.estudiante }}</td>
+                    <td class="p-4 text-center">
+                      <button (click)="calificarDesdeSeguimiento(seg, 1)" [disabled]="abriendoExpedienteId() === seg.practicaId" class="px-2 py-1 bg-slate-100 border border-slate-200 hover:border-unibe-blue hover:text-unibe-blue rounded font-mono font-bold disabled:opacity-60 disabled:cursor-not-allowed">
+                        {{ abriendoExpedienteId() === seg.practicaId ? '…' : (getGrades(seg.practicaId).c1 > 0 ? (getGrades(seg.practicaId).c1 | number:'1.2-2') : 'Evaluar') }}
+                      </button>
+                    </td>
+                    <td class="p-4 text-center">
+                      <button (click)="calificarDesdeSeguimiento(seg, 2)" [disabled]="abriendoExpedienteId() === seg.practicaId" class="px-2 py-1 bg-slate-100 border border-slate-200 hover:border-unibe-blue hover:text-unibe-blue rounded font-mono font-bold disabled:opacity-60 disabled:cursor-not-allowed">
+                        {{ abriendoExpedienteId() === seg.practicaId ? '…' : (getGrades(seg.practicaId).c2 > 0 ? (getGrades(seg.practicaId).c2 | number:'1.2-2') : 'Evaluar') }}
+                      </button>
+                    </td>
+                    <td class="p-4 text-center">
+                      <button (click)="calificarDesdeSeguimiento(seg, 3)" [disabled]="abriendoExpedienteId() === seg.practicaId" class="px-2 py-1 bg-slate-100 border border-slate-200 hover:border-unibe-blue hover:text-unibe-blue rounded font-mono font-bold disabled:opacity-60 disabled:cursor-not-allowed">
+                        {{ abriendoExpedienteId() === seg.practicaId ? '…' : (getGrades(seg.practicaId).c3 > 0 ? (getGrades(seg.practicaId).c3 | number:'1.2-2') : 'Evaluar') }}
+                      </button>
+                    </td>
+                    <td class="p-4 text-center font-bold text-unibe-blue">{{ getGrades(seg.practicaId).total | number:'1.2-2' }}</td>
+                    <td class="p-4 text-center">
+                      <button (click)="verSeguimientoDe(seg)" [disabled]="abriendoExpedienteId() === seg.practicaId" class="text-unibe-blue hover:underline disabled:opacity-60 disabled:cursor-not-allowed disabled:no-underline">
+                        {{ abriendoExpedienteId() === seg.practicaId ? 'Cargando…' : 'Ver Seguimiento' }}
+                      </button>
+                    </td>
+                  </tr>
+                } @empty {
+                  <tr>
+                    <td colspan="6" class="p-8 text-center text-slate-400 font-medium">No hay expedientes de prácticas en seguimiento para este periodo.</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+          <app-paginador
+            [pagina]="paginaSeguimiento()"
+            [tamano]="tamanoPaginaSeguimiento()"
+            [totalElementos]="totalElementosSeguimiento()"
+            [totalPaginas]="totalPaginasSeguimiento()"
+            [cargando]="cargandoSeguimiento()"
+            (cambiar)="cambioPaginaSeguimiento($event)">
+          </app-paginador>
+        </div>
+      }
+
+      <!-- Tab 5: Asignación Directa -->
+      @if (activeTab() === 'directa') {
+        <div class="max-w-lg space-y-6">
+          <h3 class="text-sm font-bold text-slate-800 uppercase tracking-wide border-b border-slate-100 pb-3">Registro de Asignación Directa (Casos Especiales / Convenios Externos)</h3>
+          <form (ngSubmit)="saveDirectAssignment()" class="space-y-4 text-xs">
+            @if (continuidadOrigenId()) {
+              <div class="rounded-lg border border-blue-200 bg-blue-50 p-4 text-blue-900">
+                <div class="flex items-start justify-between gap-3">
+                  <div><strong class="block">Continuidad hacia Práctica II</strong><span class="mt-1 block text-[10px]">Se creará un expediente nuevo y el anterior quedará como origen histórico.</span></div>
+                  <button type="button" (click)="cancelarContinuidad()" class="rounded-lg border border-blue-200 bg-white px-3 py-1.5 text-[10px] font-bold text-unibe-blue">Cancelar</button>
+                </div>
+              </div>
+            }
+            <div>
+              <label class="block font-bold text-slate-600 uppercase mb-2">Estudiante *</label>
+              <app-autocomplete 
+                [(ngModel)]="selectedEstudianteId" 
+                (itemSelected)="seleccionarEstudianteDirecto($event)"
+                name="selectedEst" 
+                placeholder="Busca por nombre o apellido..."
+                [searchFn]="buscarEstudiante"
+                [displayFn]="displayEstudiante"
+                [resolveFn]="resolverEstudiante">
+              </app-autocomplete>
+            </div>
+
+            <div>
+              <label class="block font-bold text-slate-600 uppercase mb-2">Vacante Receptora *</label>
+              <app-autocomplete 
+                [(ngModel)]="selectedVacanteId" 
+                (itemSelected)="seleccionarVacanteDirecta($event)"
+                name="selectedVac" 
+                placeholder="Busca por empresa o puesto..."
+                [searchFn]="buscarVacante"
+                [displayFn]="displayVacante"
+                [resolveFn]="resolverVacante">
+              </app-autocomplete>
+              @if (selectedVacanteId && !convenioSeleccionadoVigente()) {
+                <p class="mt-2 px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg text-amber-800 font-medium">
+                  La empresa no tiene un convenio vigente para esta asignación.
+                </p>
+              }
+            </div>
+
+            <div>
+              <label class="block font-bold text-slate-600 uppercase mb-2">Tutor externo de la empresa *</label>
+              <select [ngModel]="selectedTutorId()" (ngModelChange)="selectedTutorId.set($event)" name="selectedTut"
+                      [disabled]="cargandoTutoresDirecta() || tutoresCompatiblesDirecta().length === 0"
+                      class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg outline-none focus:border-unibe-blue text-slate-800 disabled:text-slate-400">
+                <option [ngValue]="null" disabled>{{ cargandoTutoresDirecta() ? 'Consultando tutores...' : 'Selecciona tutor compatible...' }}</option>
+                @for (vinculo of tutoresCompatiblesDirecta(); track vinculo.id) {
+                  <option [ngValue]="vinculo.tutorId">{{ vinculo.nombre }} {{ vinculo.apellido }}{{ vinculo.cargo ? ' · ' + vinculo.cargo : '' }}</option>
+                }
+              </select>
+              @if (!cargandoTutoresDirecta() && selectedEstudianteId && selectedVacanteId && tutoresCompatiblesDirecta().length === 0) {
+                <p class="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[10px] font-medium text-amber-800">
+                  La empresa no tiene un tutor activo configurado para la carrera del estudiante.
+                </p>
+              }
+            </div>
+
+            <div>
+              <label class="block font-bold text-slate-600 uppercase mb-2">Horas Requeridas *</label>
+              <input type="number" [value]="vacanteDirectaSeleccionada()?.horas || 0" readonly class="w-full px-3 py-2 bg-slate-100 border border-slate-200 rounded-lg text-slate-700 font-mono" />
+              <p class="mt-1 text-[10px] text-slate-500">Definidas en la vacante seleccionada.</p>
+            </div>
+
+            <button type="submit" class="px-5 py-2.5 bg-unibe-blue hover:bg-unibe-blue-hover text-white font-bold rounded-lg shadow transition-all active:scale-[0.98]">
+              Registrar Asignación Directa
+            </button>
+          </form>
+        </div>
+      }
+
+      <!-- TUTOR TABS -->
+      
+      <!-- Tab 1: Tutorados -->
+      @if (activeTab() === 'tutorados') {
+        <div class="space-y-6">
+          <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <h3 class="text-sm font-bold text-slate-800 uppercase tracking-wide">Alumnos bajo mi Tutoría Académica</h3>
+            <div class="flex flex-wrap items-center gap-2">
+              <div class="inline-flex min-h-9 rounded-lg border border-slate-200 bg-slate-50 p-0.5" role="group" aria-label="Vista de tutorías">
+                <button type="button" (click)="vistaTutorados.set('ACTIVOS')" [class]="vistaTutorados() === 'ACTIVOS' ? 'bg-white text-unibe-blue shadow-sm' : 'text-slate-500'" class="rounded-md px-3 text-xs font-bold">Activos</button>
+                <button type="button" (click)="vistaTutorados.set('HISTORIAL')" [class]="vistaTutorados() === 'HISTORIAL' ? 'bg-white text-unibe-blue shadow-sm' : 'text-slate-500'" class="rounded-md px-3 text-xs font-bold">Historial</button>
+              </div>
+              <label class="text-xs font-bold text-slate-600">Periodo
+                <select [ngModel]="periodoTutor()" (ngModelChange)="periodoTutor.set($event)" name="periodoTutorados" class="ml-1.5 min-h-9 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-normal text-slate-800 outline-none focus:border-unibe-blue">
+                  <option value="TODOS">Todos</option>
+                  @for (periodo of periodosTutor(); track periodo) {
+                    <option [value]="periodo">{{ periodo === SIN_PERIODO ? 'Sin periodo' : periodo }}</option>
+                  }
+                </select>
+              </label>
+              @if (carrerasTutor().length > 1) {
+                <label class="text-xs font-bold text-slate-600">Carrera
+                  <select [ngModel]="filtroCarreraTutor()" (ngModelChange)="filtroCarreraTutor.set($event)" name="filtroCarreraTutor" class="ml-1.5 min-h-9 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-normal text-slate-800 outline-none focus:border-unibe-blue">
+                    <option value="TODAS">Todas</option>
+                    @for (c of carrerasTutor(); track c) {
+                      <option [value]="c">{{ c }}</option>
+                    }
+                  </select>
+                </label>
+              }
+              <input type="search" [(ngModel)]="filtroTutorados" name="filtroTutorados"
+                     placeholder="Buscar por estudiante, matrícula o empresa…"
+                     class="px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs font-medium text-slate-700 outline-none focus:border-unibe-blue md:w-72" />
+            </div>
+          </div>
+          <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs border-collapse">
+            <thead>
+              <tr class="border-b border-slate-200 text-slate-400 font-bold uppercase bg-slate-50">
+                <th class="p-4">Estudiante</th>
+                <th class="p-4">Matrícula</th>
+                <th class="p-4">Carrera</th>
+                <th class="p-4">Empresa asignada</th>
+                <th class="p-4 text-center">Avance</th>
+                <th class="p-4">Estado</th>
+                <th class="p-4 text-center">Nota P1 (Tutor)</th>
+                <th class="p-4 text-center">Nota P2 (Tutor)</th>
+                <th class="p-4 text-center">Nota P3 (Tutor)</th>
+                <th class="p-4 text-center">Acciones</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100 text-slate-700">
+              @for (prac of tutoradosOrdenados(); track prac.id) {
+                <tr class="hover:bg-slate-50/50">
+                  <td class="p-4 font-bold">{{ prac.estudiante.usuario.nombre }} {{ prac.estudiante.usuario.apellido }}</td>
+                  <td class="p-4 font-mono font-semibold">{{ prac.estudiante.matricula }}</td>
+                  <td class="p-4 font-medium text-slate-500">{{ prac.estudiante.carrera }}</td>
+                  <td class="p-4">{{ prac.empresa.nombre }}</td>
+                  <td class="p-4 text-center">
+                    <div class="font-mono font-bold">{{ prac.horasCompletadas || 0 }}/{{ prac.horasRequeridas || 0 }} h · {{ avance(prac.horasCompletadas, prac.horasRequeridas) }}%</div>
+                    <div class="mx-auto mt-1.5 h-1.5 w-24 overflow-hidden rounded-full bg-slate-100">
+                      <div class="h-1.5 rounded-full bg-unibe-blue transition-all" [style.width.%]="avance(prac.horasCompletadas, prac.horasRequeridas)"></div>
+                    </div>
+                  </td>
+                  <td class="p-4">
+                    <span class="px-2.5 py-0.5 bg-blue-50 border border-blue-200 text-unibe-blue rounded-full text-[10px] font-bold uppercase">
+                      {{ prac.estado }}
+                    </span>
+                  </td>
+                  <td class="p-4 text-center">
+                    <button (click)="openGradingModal(prac, 1)" class="px-2 py-1 bg-slate-100 border border-slate-200 hover:border-unibe-blue hover:text-unibe-blue rounded font-mono font-bold">
+                      {{ getGrades(prac.id!).t1 > 0 ? (getGrades(prac.id!).t1 | number:'1.2-2') : 'Evaluar' }}
+                    </button>
+                  </td>
+                  <td class="p-4 text-center">
+                    <button (click)="openGradingModal(prac, 2)" class="px-2 py-1 bg-slate-100 border border-slate-200 hover:border-unibe-blue hover:text-unibe-blue rounded font-mono font-bold">
+                      {{ getGrades(prac.id!).t2 > 0 ? (getGrades(prac.id!).t2 | number:'1.2-2') : 'Evaluar' }}
+                    </button>
+                  </td>
+                  <td class="p-4 text-center">
+                    <button (click)="openGradingModal(prac, 3)" class="px-2 py-1 bg-slate-100 border border-slate-200 hover:border-unibe-blue hover:text-unibe-blue rounded font-mono font-bold">
+                      {{ getGrades(prac.id!).t3 > 0 ? (getGrades(prac.id!).t3 | number:'1.2-2') : 'Evaluar' }}
+                    </button>
+                  </td>
+                  <td class="p-4 text-center">
+                    <button type="button" (click)="abrirComunicaciones(prac)" class="min-h-9 rounded-lg border border-unibe-blue px-3 text-[10px] font-bold text-unibe-blue hover:bg-blue-50">Comunicaciones</button>
+                  </td>
+                </tr>
+              } @empty {
+                <tr>
+                  <td colspan="10" class="p-8 text-center text-slate-400 font-medium">No hay tutorías en esta vista. Revisa el periodo o cambia entre activos e historial.</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+          </div>
+        </div>
+      }
+
+      <!-- Tab 2: Control de Asistencia (Tutor) -->
+      @if (activeTab() === 'asistencia_tutor') {
+        <div class="space-y-6">
+          <h3 class="text-sm font-bold text-slate-800 uppercase tracking-wide border-b border-slate-100 pb-3">Pase de Lista</h3>
+
+          @if (practicasActivasTutor().length > 0) {
+            <div class="grid grid-cols-1 gap-4 bg-slate-50 p-4 border border-slate-200 rounded-xl text-xs md:grid-cols-3">
+              <div>
+                <label class="block font-bold text-slate-600 mb-1">Fecha *</label>
+                <input type="date" [(ngModel)]="paseCabecera.fecha" class="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-slate-800 outline-none focus:border-unibe-blue" />
+              </div>
+              <div>
+                <label class="block font-bold text-slate-600 mb-1">Hora de Ingreso</label>
+                <input type="text" [(ngModel)]="paseCabecera.horaIngreso" class="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-slate-800 font-mono outline-none focus:border-unibe-blue" />
+              </div>
+              <div>
+                <label class="block font-bold text-slate-600 mb-1">Hora de Salida</label>
+                <input type="text" [(ngModel)]="paseCabecera.horaSalida" class="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-slate-800 font-mono outline-none focus:border-unibe-blue" />
+              </div>
+            </div>
+
+            <div class="space-y-3">
+              @for (prac of practicasActivasTutor(); track prac.id) {
+                <div class="rounded-xl border border-slate-200 bg-white p-4 text-xs">
+                  <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                    <div class="min-w-0">
+                      <h4 class="font-bold text-slate-800">{{ prac.estudiante.usuario.nombre }} {{ prac.estudiante.usuario.apellido }}</h4>
+                      <p class="text-[10px] text-slate-400 font-mono">{{ prac.estudiante.matricula }} · {{ prac.empresa.nombre }}</p>
+                    </div>
+                    @if (asistenciaExistentePase(prac.id!); as existente) {
+                      <span class="w-fit rounded-full border border-green-200 bg-green-50 px-3 py-1.5 text-[10px] font-bold uppercase text-green-700">
+                        ✓ Ya registrada: {{ existente.estado }} {{ existente.horaIngreso || '—' }}–{{ existente.horaSalida || '—' }}
+                      </span>
+                    } @else {
+                      <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
+                        <div class="flex flex-wrap gap-1.5" role="group" [attr.aria-label]="'Estado de ' + prac.estudiante.usuario.nombre">
+                          @for (opcion of ['Presente', 'Atraso', 'Falta']; track opcion) {
+                            <button type="button" (click)="filaPase(prac.id!).estado = $any(opcion)"
+                              [class]="filaPase(prac.id!).estado === opcion
+                                ? (opcion === 'Presente' ? 'border-green-600 bg-green-600 text-white' : (opcion === 'Atraso' ? 'border-amber-500 bg-amber-500 text-white' : 'border-red-600 bg-red-600 text-white'))
+                                : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'"
+                              class="min-h-9 rounded-lg border px-3 text-[10px] font-bold uppercase transition-all">{{ opcion }}</button>
+                          }
+                          <button type="button" (click)="filaPase(prac.id!).estado = $any('OMITIR')"
+                            [class]="filaPase(prac.id!).estado === 'OMITIR' ? 'border-slate-500 bg-slate-500 text-white' : 'border-slate-200 bg-white text-slate-400 hover:bg-slate-50'"
+                            class="min-h-9 rounded-lg border px-3 text-[10px] font-bold uppercase transition-all">No registrar</button>
+                        </div>
+                        <input type="text" placeholder="Observación (opcional)"
+                          [ngModel]="filaPase(prac.id!).observaciones"
+                          (ngModelChange)="filaPase(prac.id!).observaciones = $event"
+                          [disabled]="filaPase(prac.id!).estado === 'OMITIR'"
+                          class="min-h-9 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-slate-800 outline-none focus:border-unibe-blue disabled:opacity-50 sm:w-56" />
+                      </div>
+                    }
+                  </div>
+                </div>
+              }
+            </div>
+
+            <div class="flex justify-end">
+              <button type="button" (click)="guardarPaseLista()" [disabled]="guardandoPase() || filasPorGuardar().length === 0"
+                class="min-h-11 rounded-lg bg-unibe-blue px-5 py-2 text-[10px] font-bold text-white shadow transition-all hover:bg-unibe-blue-hover disabled:cursor-not-allowed disabled:opacity-50">
+                {{ guardandoPase() ? 'Guardando…' : (filasPorGuardar().length > 0 ? 'Guardar pase de lista (' + filasPorGuardar().length + ' estudiante(s))' : 'Sin estudiantes por registrar en esta fecha') }}
+              </button>
+            </div>
+          } @else {
+            <p class="rounded-xl border border-slate-200 bg-slate-50 p-6 text-center text-xs text-slate-500">No tienes prácticas activas para registrar asistencia.</p>
+          }
+
+          @if (practicasActivasTutor().length > 0) {
+            <div class="flex flex-wrap items-center justify-end gap-3">
+              <label class="text-xs font-bold text-slate-600">Periodo
+                <select [ngModel]="periodoTutor()" (ngModelChange)="periodoTutor.set($event)" name="periodoHistorialAsistencias" class="ml-1.5 min-h-9 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-normal text-slate-800 outline-none focus:border-unibe-blue">
+                  <option value="TODOS">Todos</option>
+                  @for (periodo of periodosTutor(); track periodo) {
+                    <option [value]="periodo">{{ periodo === SIN_PERIODO ? 'Sin periodo' : periodo }}</option>
+                  }
+                </select>
+              </label>
+              <label class="text-xs font-bold text-slate-600">Filtrar historial:
+                <select [ngModel]="asistenciaPracticaId()" (ngModelChange)="seleccionarAsistenciaPractica($event)" class="ml-2 min-h-9 rounded-lg border border-slate-200 bg-white px-3 py-1.5 font-normal text-slate-800 outline-none focus:border-unibe-blue">
+                  <option [ngValue]="null">Todos los estudiantes</option>
+                  @for (prac of practicasActivasTutor(); track prac.id) {
+                    <option [ngValue]="prac.id">{{ prac.estudiante.usuario.nombre }} {{ prac.estudiante.usuario.apellido }}</option>
+                  }
+                </select>
+              </label>
+            </div>
+          }
+          <app-asistencias-historial-panel [asistencias]="asistenciasHistorialTutor()" />
+        </div>
+      }
+
+      <!-- Tab 3: Bitácoras Alumnos -->
+      @if (activeTab() === 'bitacoras_tutor') {
+        <div class="mb-4 flex justify-end">
+          <label class="text-xs font-bold text-slate-600">Periodo
+            <select [ngModel]="periodoTutor()" (ngModelChange)="periodoTutor.set($event)" name="periodoBitacoras" class="ml-1.5 min-h-9 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-normal text-slate-800 outline-none focus:border-unibe-blue">
+              <option value="TODOS">Todos</option>
+              @for (periodo of periodosTutor(); track periodo) {
+                <option [value]="periodo">{{ periodo === SIN_PERIODO ? 'Sin periodo' : periodo }}</option>
+              }
+            </select>
+          </label>
+        </div>
+        <app-bitacoras-revision-panel
+          titulo="Bitácoras de prácticas por revisar"
+          [bitacoras]="bitacorasDeTutorados()"
+          [asistencias]="asistenciasDeTutorados()"
+          [procesandoId]="procesandoBitacoraId()"
+          (procesar)="resolverBitacora($event)"
+        />
+      }
+
+      <!-- STUDENT TABS -->
+      
+      <!-- Tab 1: Mi Progreso -->
+      @if (activeTab() === 'mi_progreso') {
+        <div class="space-y-6">
+          @if (etapaEstudiante() === 'Vinculación') {
+            <div class="p-4 bg-amber-50 border border-amber-200 rounded-xl text-amber-800 text-xs font-semibold">
+              Tu proceso académico actual es <strong>Vinculación</strong>. La postulación a prácticas se habilitará
+              cuando la completes (orden institucional: Vinculación → Práctica I → Práctica II).
+            </div>
+          }
+          @if (!actividadActiva() && enEtapaPracticas()) {
+            <div class="space-y-5 text-xs">
+              <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
+                <div class="p-4 border rounded-xl" [class.bg-green-50]="documentosCompletos()" [class.border-green-200]="documentosCompletos()" [class.bg-slate-50]="!documentosCompletos()" [class.border-slate-200]="!documentosCompletos()">
+                  <span class="text-[9px] text-slate-400 font-bold uppercase block">1. Documentos</span>
+                  <strong class="text-slate-800">{{ documentosCompletos() ? 'Completos' : 'Pendientes' }}</strong>
+                </div>
+                <div class="p-4 border rounded-xl" [class.bg-green-50]="postulacionHabilitada()" [class.border-green-200]="postulacionHabilitada()" [class.bg-amber-50]="!postulacionHabilitada()" [class.border-amber-200]="!postulacionHabilitada()">
+                  <span class="text-[9px] text-slate-400 font-bold uppercase block">2. Convocatoria</span>
+                  <strong class="text-slate-800">{{ postulacionHabilitada() ? 'Abierta' : 'Abre ' + fechaInicioPostulacion }}</strong>
+                </div>
+                <div class="p-4 border rounded-xl" [class.bg-green-50]="miPostulacionActiva()" [class.border-green-200]="miPostulacionActiva()" [class.bg-slate-50]="!miPostulacionActiva()" [class.border-slate-200]="!miPostulacionActiva()">
+                  <span class="text-[9px] text-slate-400 font-bold uppercase block">3. Postulación</span>
+                  <strong class="text-slate-800">{{ miPostulacionActiva()?.estado || 'Sin enviar' }}</strong>
+                </div>
+                <div class="p-4 border rounded-xl" [class.bg-green-50]="actividadActiva()" [class.border-green-200]="actividadActiva()" [class.bg-slate-50]="!actividadActiva()" [class.border-slate-200]="!actividadActiva()">
+                  <span class="text-[9px] text-slate-400 font-bold uppercase block">4. Expediente</span>
+                  <strong class="text-slate-800">{{ actividadActiva() ? 'En ejecución' : 'Sin asignación' }}</strong>
+                </div>
+              </div>
+
+              @if (miPostulacionActiva(); as post) {
+                <div class="p-5 bg-blue-50 border border-blue-100 rounded-xl space-y-4">
+                  <div class="flex justify-between gap-4 items-start">
+                    <div>
+                      <h3 class="text-sm font-bold text-unibe-blue uppercase tracking-wide">Postulación enviada</h3>
+                      <p class="text-slate-600 mt-1">Tus preferencias ya fueron registradas. El resultado depende del procesamiento meritocrático y la confirmación del coordinador.</p>
+                    </div>
+                    <span class="px-3 py-1 bg-white border border-blue-100 text-unibe-blue rounded-full text-[10px] font-bold uppercase">{{ post.estado }}</span>
+                  </div>
+
+                  <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <div class="p-3 bg-white border border-blue-100 rounded-xl">
+                      <span class="text-[9px] text-slate-400 font-bold uppercase block">Preferencia 1</span>
+                      <strong class="text-slate-800">{{ vacLabel(post.pref1) }}</strong>
+                    </div>
+                    <div class="p-3 bg-white border border-blue-100 rounded-xl">
+                      <span class="text-[9px] text-slate-400 font-bold uppercase block">Preferencia 2</span>
+                      <strong class="text-slate-800">{{ vacLabel(post.pref2) }}</strong>
+                    </div>
+                    <div class="p-3 bg-white border border-blue-100 rounded-xl">
+                      <span class="text-[9px] text-slate-400 font-bold uppercase block">Preferencia 3</span>
+                      <strong class="text-slate-800">{{ vacLabel(post.pref3) }}</strong>
+                    </div>
+                  </div>
+
+                  @if (post.asignadoEmpresa) {
+                    <div class="p-4 bg-green-50 border border-green-200 rounded-xl">
+                      <span class="text-[9px] text-green-700 font-bold uppercase block">Resultado preliminar</span>
+                      <strong class="text-green-800">{{ post.asignadoEmpresa.nombre }}</strong>
+                    </div>
+                  }
+                </div>
+              } @else {
+                <div class="p-6 text-center bg-amber-50 border border-amber-200 text-amber-800 rounded-xl space-y-3">
+                  <h4 class="font-bold">Sin asignación activa</h4>
+                  <p class="text-slate-500">Completa tus documentos, revisa las ofertas compatibles y confirma entre dos y tres preferencias.</p>
+                  <div class="flex justify-center gap-2">
+                    @if (enEtapaPracticas() && !documentosCompletos()) {
+                      <button (click)="activeTab.set('cargar_docs')" class="px-4 py-2 bg-unibe-blue text-white rounded-lg font-bold text-[10px]">Subir documentación</button>
+                    } @else if (puedeIniciarPostulacion()) {
+                      <button (click)="activeTab.set('ofertas')" class="px-4 py-2 bg-unibe-blue text-white rounded-lg font-bold text-[10px]">Ver ofertas</button>
+                    } @else if (!enEtapaPracticas()) {
+                      <a routerLink="/dashboard/vinculacion" class="inline-flex min-h-10 items-center rounded-lg bg-unibe-blue px-4 py-2 text-[10px] font-bold text-white hover:bg-unibe-blue-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-unibe-blue">Continuar en Vinculación</a>
+                    }
+                  </div>
+                </div>
+              }
+            </div>
+          }
+
+          @if (practicas().length > 0) {
+            @if (!actividadActiva()) {
+              <div class="border-l-4 border-amber-500 bg-amber-50 px-4 py-3 text-xs leading-relaxed text-amber-950">
+                Tus prácticas anteriores se conservan como historial. Puedes iniciar un nuevo intento (Práctica II) cuando la convocatoria y la documentación estén habilitadas.
+              </div>
+            }
+            @for (prac of misPracticasOrdenadas(); track prac.id) {
+              <div class="space-y-6 text-xs">
+                <!-- KPI General -->
+                <div class="grid grid-cols-3 gap-6 text-center">
+                  <div class="p-4 bg-slate-50 border border-slate-200 rounded-xl">
+                    <span class="text-[10px] text-slate-400 font-bold uppercase">Empresa asignada</span>
+                    <div class="font-bold text-unibe-blue text-sm mt-1">{{ prac.empresa.nombre }}</div>
+                  </div>
+                  <div class="p-4 bg-slate-50 border border-slate-200 rounded-xl">
+                    <span class="text-[10px] text-slate-400 font-bold uppercase">Tutor Académico</span>
+                    <div class="font-bold text-slate-800 text-sm mt-1">{{ prac.tutor ? (prac.tutor.nombre + ' ' + prac.tutor.apellido) : 'Sin asignar' }}</div>
+                  </div>
+                  <div class="p-4 bg-slate-50 border border-slate-200 rounded-xl">
+                    <span class="text-[10px] text-slate-400 font-bold uppercase">Horas Reportadas</span>
+                    <div class="font-bold text-slate-800 text-sm mt-1 font-mono">{{ prac.horasCompletadas }} / {{ prac.horasRequeridas }} h</div>
+                  </div>
+                </div>
+
+                <!-- Progress bar -->
+                <div class="space-y-2">
+                  <div class="flex justify-between items-center font-bold text-slate-700">
+                    <span>Avance de Horas Aprobadas</span>
+                    <span>{{ ((prac.horasCompletadas || 0) / prac.horasRequeridas) * 100 | number:'1.0-0' }}%</span>
+                  </div>
+                  <div class="w-full bg-slate-100 border border-slate-200 rounded-full h-3.5 overflow-hidden">
+                    <div class="bg-unibe-blue h-3.5 rounded-full transition-all duration-500" [style.width.%]="((prac.horasCompletadas || 0) / prac.horasRequeridas) * 100"></div>
+                  </div>
+                </div>
+
+                <div class="flex flex-col gap-3 border-y border-slate-200 py-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <span class="block text-[10px] font-bold uppercase tracking-wide text-slate-500">Estado del expediente</span>
+                    <span class="mt-1 inline-flex rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[10px] font-bold uppercase text-slate-700">{{ estadoTexto(prac.estado) }}</span>
+                    @if (prac.motivoFinalizacion) { <p class="mt-2 max-w-xl text-xs leading-relaxed text-slate-600"><strong>Motivo de finalización:</strong> {{ prac.motivoFinalizacion }}</p> }
+                  </div>
+                  <div class="flex flex-wrap gap-2">
+                    <button type="button" (click)="abrirComunicaciones(prac)" class="min-h-11 rounded-lg bg-unibe-blue px-4 py-2 text-xs font-bold text-white hover:bg-unibe-blue-hover">Contactar tutor</button>
+                    <button type="button" (click)="abrirHistorialPersonal(prac)" class="min-h-11 rounded-lg border border-unibe-blue px-4 py-2 text-xs font-bold text-unibe-blue hover:bg-blue-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-unibe-blue">Ver historial</button>
+                  </div>
+                </div>
+
+                <hr class="border-slate-200" />
+
+                <div class="p-4 bg-slate-50 border border-slate-200 rounded-xl flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                  <div>
+                    <h3 class="text-xs font-bold text-slate-800 uppercase tracking-wide">Carta de aceptación del cupo</h3>
+                    <p class="text-[10px] text-slate-500 mt-1">Documento posterior a la asignación. Algunas carreras pueden marcarlo como obligatorio desde la configuración documental.</p>
+                    <span class="inline-block mt-2 px-2 py-1 rounded border text-[10px] font-bold uppercase" [class]="estadoDocumentoClase('carta_aceptacion')">{{ estadoDocumentoTexto('carta_aceptacion') }}</span>
+                    @if (observacionDocumento('carta_aceptacion')) {
+                      <p class="mt-1 text-[10px] text-rose-600">{{ observacionDocumento('carta_aceptacion') }}</p>
+                    }
+                  </div>
+                  <div class="flex items-center gap-2">
+                    <input #cartaAceptacionPracticas type="file" class="hidden" accept="application/pdf,image/png,image/jpeg,image/webp" (change)="uploadDoc('carta_aceptacion', $event)" />
+                    <button type="button" (click)="cartaAceptacionPracticas.click()" [class.bg-green-600]="cartaAceptacionCargada()" class="px-3 py-2 bg-unibe-blue text-white font-bold rounded-lg transition-all text-[10px] w-max">
+                      {{ documentoTieneArchivo('carta_aceptacion') ? 'Reemplazar carta' : 'Subir carta' }}
+                    </button>
+                    @if (documentoTieneArchivo('carta_aceptacion')) {
+                      <button type="button" (click)="verDocumento('carta_aceptacion')" class="px-3 py-2 bg-white border border-slate-200 text-slate-700 font-bold rounded-lg transition-all text-[10px] w-max">
+                        Ver
+                      </button>
+                    }
+                  </div>
+                </div>
+
+                <!-- Grading -->
+                <h3 class="text-sm font-bold text-unibe-blue uppercase tracking-wide">Mis Calificaciones del Periodo</h3>
+                <div class="overflow-x-auto">
+                  <table class="w-full text-left text-xs border-collapse">
+                    <thead>
+                      <tr class="border-b border-slate-200 text-slate-400 font-bold uppercase bg-slate-50">
+                        <th class="p-4">Parcial</th>
+                        <th class="p-4 text-center">Nota Tutor (50%)</th>
+                        <th class="p-4 text-center">Nota Coordinador (50%)</th>
+                        <th class="p-4 text-center">Nota Parcial</th>
+                        <th class="p-4 text-center">Encuesta de Satisfacción</th>
+                      </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100 text-slate-700">
+                      <tr>
+                        <td class="p-4 font-semibold">Parcial 1 (10 pts)</td>
+                        @if (getGrades(prac.id!).t1 > 0 && !hasCompletedSurvey(prac.id!, 1)) {
+                          <td class="p-4 text-center font-sans text-[10px] italic text-slate-400" colspan="3">🔒 Completa la encuesta para ver tus notas</td>
+                        } @else {
+                          <td class="p-4 text-center font-mono font-semibold">{{ getGrades(prac.id!).t1 > 0 ? (getGrades(prac.id!).t1 | number:'1.2-2') : '-' }}</td>
+                          <td class="p-4 text-center font-mono font-semibold">{{ getGrades(prac.id!).c1 > 0 ? (getGrades(prac.id!).c1 | number:'1.2-2') : '-' }}</td>
+                          <td class="p-4 text-center font-mono font-bold text-unibe-blue">{{ getGrades(prac.id!).p1 > 0 ? (getGrades(prac.id!).p1 | number:'1.2-2') : '-' }}</td>
+                        }
+                        <td class="p-4 text-center">
+                          @if (hasCompletedSurvey(prac.id!, 1)) {
+                            <span class="px-2 py-0.5 bg-green-50 border border-green-200 text-green-700 rounded text-[10px] font-bold">Completada</span>
+                          } @else if (encuestaHabilitada(prac, 1)) {
+                            <button (click)="openSurvey(1)" class="px-2.5 py-1 bg-unibe-gold text-slate-900 rounded text-[10px] font-bold hover:bg-unibe-gold-hover transition-all font-sans">Llenar Encuesta</button>
+                          } @else {
+                            <span class="px-2 py-0.5 bg-slate-50 border border-slate-200 text-slate-400 rounded text-[10px] font-bold">Pendiente de notas</span>
+                          }
+                        </td>
+                      </tr>
+                      <tr>
+                        <td class="p-4 font-semibold">Parcial 2 (10 pts)</td>
+                        @if (getGrades(prac.id!).t2 > 0 && !hasCompletedSurvey(prac.id!, 2)) {
+                          <td class="p-4 text-center font-sans text-[10px] italic text-slate-400" colspan="3">🔒 Completa la encuesta para ver tus notas</td>
+                        } @else {
+                          <td class="p-4 text-center font-mono font-semibold">{{ getGrades(prac.id!).t2 > 0 ? (getGrades(prac.id!).t2 | number:'1.2-2') : '-' }}</td>
+                          <td class="p-4 text-center font-mono font-semibold">{{ getGrades(prac.id!).c2 > 0 ? (getGrades(prac.id!).c2 | number:'1.2-2') : '-' }}</td>
+                          <td class="p-4 text-center font-mono font-bold text-unibe-blue">{{ getGrades(prac.id!).p2 > 0 ? (getGrades(prac.id!).p2 | number:'1.2-2') : '-' }}</td>
+                        }
+                        <td class="p-4 text-center">
+                          @if (hasCompletedSurvey(prac.id!, 2)) {
+                            <span class="px-2 py-0.5 bg-green-50 border border-green-200 text-green-700 rounded text-[10px] font-bold">Completada</span>
+                          } @else if (encuestaHabilitada(prac, 2)) {
+                            <button (click)="openSurvey(2)" class="px-2.5 py-1 bg-unibe-gold text-slate-900 rounded text-[10px] font-bold hover:bg-unibe-gold-hover transition-all font-sans">Llenar Encuesta</button>
+                          } @else {
+                            <span class="px-2 py-0.5 bg-slate-50 border border-slate-200 text-slate-400 rounded text-[10px] font-bold">Pendiente de notas</span>
+                          }
+                        </td>
+                      </tr>
+                      <tr>
+                        <td class="p-4 font-semibold">Parcial 3 (10 pts)</td>
+                        @if (getGrades(prac.id!).t3 > 0 && !hasCompletedSurvey(prac.id!, 3)) {
+                          <td class="p-4 text-center font-sans text-[10px] italic text-slate-400" colspan="3">🔒 Completa la encuesta para ver tus notas</td>
+                        } @else {
+                          <td class="p-4 text-center font-mono font-semibold">{{ getGrades(prac.id!).t3 > 0 ? (getGrades(prac.id!).t3 | number:'1.2-2') : '-' }}</td>
+                          <td class="p-4 text-center font-mono font-semibold">{{ getGrades(prac.id!).c3 > 0 ? (getGrades(prac.id!).c3 | number:'1.2-2') : '-' }}</td>
+                          <td class="p-4 text-center font-mono font-bold text-unibe-blue">{{ getGrades(prac.id!).p3 > 0 ? (getGrades(prac.id!).p3 | number:'1.2-2') : '-' }}</td>
+                        }
+                        <td class="p-4 text-center">
+                          @if (hasCompletedSurvey(prac.id!, 3)) {
+                            <span class="px-2 py-0.5 bg-green-50 border border-green-200 text-green-700 rounded text-[10px] font-bold">Completada</span>
+                          } @else if (encuestaHabilitada(prac, 3)) {
+                            <button (click)="openSurvey(3)" class="px-2.5 py-1 bg-unibe-gold text-slate-900 rounded text-[10px] font-bold hover:bg-unibe-gold-hover transition-all font-sans">Llenar Encuesta</button>
+                          } @else {
+                            <span class="px-2 py-0.5 bg-slate-50 border border-slate-200 text-slate-400 rounded text-[10px] font-bold">Pendiente de notas</span>
+                          }
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            }
+
+          }
+        </div>
+      }
+
+      <!-- Las notas académicas del estudiante se consultan en el módulo "Mi Expediente" -->
+
+      <!-- Tab 2: Cargar Documentos -->
+      @if (activeTab() === 'cargar_docs' && enEtapaPracticas()) {
+        <app-carga-documentos-panel proceso="PRACTICAS" [documentos]="documentosDetalle()" [subiendo]="subiendoDocumento()" (subir)="uploadDoc($event.tipo, $event.evento)" (ver)="verDocumento($event)" />
+      } @else if (activeTab() === 'cargar_docs') {
+        <div class="space-y-3 rounded-xl border border-amber-200 bg-amber-50 p-6 text-center text-xs text-amber-900">
+          <h3 class="font-bold">Este proceso todavía no está habilitado</h3>
+          <p class="text-slate-600">Completa primero Vinculación. La carga documental de Prácticas se habilitará automáticamente al avanzar de etapa.</p>
+          <a routerLink="/dashboard/vinculacion" class="inline-flex min-h-10 items-center rounded-lg bg-unibe-blue px-4 py-2 text-[10px] font-bold text-white hover:bg-unibe-blue-hover">Continuar en Vinculación</a>
+        </div>
+      }
+
+      <!-- Tab: Estado de Espera (Documentos enviados, esperando fecha de postulación) -->
+      @if (activeTab() === 'espera_postulacion') {
+        <div class="space-y-6 text-xs max-w-lg animate-fade-in">
+          <div class="p-6 bg-amber-50 border border-amber-200 rounded-xl space-y-4">
+            <div class="flex items-center gap-3">
+              <span class="text-3xl">⏳</span>
+              <div>
+                <h3 class="text-sm font-bold text-amber-800 uppercase tracking-wide">Expediente Enviado Correctamente</h3>
+                <p class="text-amber-600 mt-1 leading-relaxed">
+                  Tu documentación fue recibida y validada con éxito. Debes esperar a que se abra el período de postulación para visualizar las vacantes disponibles.
+                </p>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4 p-4 bg-white/70 border border-amber-100 rounded-xl">
+              <div>
+                <span class="text-[10px] text-amber-500 font-bold uppercase">Documentos Enviados</span>
+                <div class="font-bold text-green-700 mt-0.5">✅ CV • ✅ Carta • ✅ Cédula</div>
+              </div>
+              <div>
+                <span class="text-[10px] text-amber-500 font-bold uppercase">Fecha Apertura de Postulación</span>
+                <div class="font-bold text-amber-800 mt-0.5 font-mono text-sm">{{ fechaInicioPostulacion }}</div>
+              </div>
+            </div>
+
+            <p class="text-[10px] text-amber-500 italic leading-relaxed">
+              El día {{ fechaInicioPostulacion }} se habilitarán automáticamente las vacantes publicadas por el coordinador de tu carrera. Podrás explorar cada empresa con su descripción, perfil requerido y número de cupos disponibles.
+            </p>
+          </div>
+        </div>
+      }
+
+      <!-- Tab 3: Ofertas Inteligentes (Student View) -->
+      @if (activeTab() === 'ofertas') {
+        <div class="space-y-6">
+          @if (userRole() === 'ESTUDIANTE') {
+            <div class="p-4 bg-unibe-blue/5 border border-unibe-blue/10 rounded-xl text-xs text-slate-600 leading-relaxed">
+              <span class="font-bold text-unibe-blue uppercase">Tu etapa académica actual: {{ etapaEstudiante() }}.</span>
+              @if (etapaEstudiante() === 'Vinculación') {
+                <span> Según el flujo académico, primero debes completar tu Vinculación Comunitaria (160 h). Aquí verás las ofertas de tipo Vinculación de tu carrera; también puedes postular a proyectos comunitarios desde el módulo de <b>Vinculación</b>.</span>
+              } @else if (etapaEstudiante() === 'COMPLETADO') {
+                <span> Ya completaste Vinculación, Práctica I y Práctica II. No tienes etapas pendientes. 🎓</span>
+              } @else {
+                <span> Se muestran únicamente las vacantes de <b>{{ etapaEstudiante() }}</b> compatibles con tu carrera.</span>
+              }
+            </div>
+          }
+          <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-slate-50 p-4 border border-slate-200 rounded-xl">
+            <div class="flex-1 w-full relative">
+              <input
+                type="text"
+                [(ngModel)]="searchText"
+                placeholder="Buscar por empresa, área, ciudad, palabras clave..."
+                class="w-full pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-lg text-xs outline-none focus:border-unibe-blue text-slate-800"
+              />
+              <span class="absolute left-3 top-2.5 text-slate-400">🔍</span>
+            </div>
+            
+            <div class="flex flex-wrap gap-2 text-xs">
+              <select [(ngModel)]="filtroModalidadTrabajo" class="px-3 py-2 bg-white border border-slate-200 rounded-lg outline-none text-slate-700">
+                <option value="TODOS">Modalidad (Todas)</option>
+                <option value="Presencial">Presencial</option>
+                <option value="Híbrida">Híbrida</option>
+                <option value="Virtual">Virtual</option>
+              </select>
+
+              <select [(ngModel)]="filtroTipoEmpresa" class="px-3 py-2 bg-white border border-slate-200 rounded-lg outline-none text-slate-700">
+                <option value="TODOS">Tipo Empresa (Todas)</option>
+                <option value="Pública">Pública</option>
+                <option value="Privada">Privada</option>
+              </select>
+
+              <label class="flex items-center gap-2 px-3 py-2 bg-white border border-slate-200 rounded-lg select-none cursor-pointer">
+                <input type="checkbox" [(ngModel)]="filtroSoloCupos" class="accent-unibe-blue" />
+                <span class="text-slate-700 text-[10px] font-semibold uppercase">Solo con Cupos</span>
+              </label>
+            </div>
+          </div>
+
+          <!-- Opportunities Grid -->
+          @if (getFilteredVacantes().length === 0) {
+            <div class="p-12 text-center border border-dashed border-slate-200 rounded-xl bg-slate-50 text-slate-400 text-xs">
+              No se encontraron vacantes compatibles que coincidan con los filtros de búsqueda o con tu fase académica activa.
+            </div>
+          } @else {
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              @for (vac of getFilteredVacantes(); track vac.id) {
+                <div class="bg-white border border-slate-200 rounded-xl p-5 hover:shadow-md transition-all flex flex-col justify-between relative overflow-hidden group">
+                  <!-- Heart Favorite Toggler -->
+                  <button (click)="toggleFavorita(vac.id)" class="absolute right-4 top-4 text-slate-350 hover:text-red-500 transition-colors focus:outline-none">
+                    <span class="text-lg" [class.text-red-500]="isFavorita(vac.id)">{{ isFavorita(vac.id) ? '❤️' : '🤍' }}</span>
+                  </button>
+
+                  <div class="space-y-4">
+                    <!-- Badges Row -->
+                    <div class="flex flex-wrap gap-1.5 items-center">
+                      <span class="px-2 py-0.5 bg-unibe-blue/10 border border-unibe-blue/20 text-unibe-blue text-[8px] font-bold uppercase rounded">
+                        Compatible con tu carrera
+                      </span>
+                      @if (vac.cupos <= 1) {
+                        <span class="px-2 py-0.5 bg-rose-50 border border-rose-200 text-rose-700 text-[8px] font-bold uppercase rounded">
+                          Cupos Limitados
+                        </span>
+                      }
+                      @if (vac.altaDemanda) {
+                        <span class="px-2 py-0.5 bg-amber-50 border border-amber-200 text-amber-700 text-[8px] font-bold uppercase rounded animate-pulse">
+                          Alta Demanda
+                        </span>
+                      }
+                    </div>
+
+                    <!-- Header & Title -->
+                    <div>
+                      <div class="text-[10px] text-slate-400 font-bold uppercase tracking-wide">{{ vac.empresa.nombre }} • {{ vac.ciudad }}</div>
+                      <h4 class="text-xs font-bold text-slate-800 mt-1 line-clamp-1 group-hover:text-unibe-blue transition-colors">{{ vac.nombre }}</h4>
+                      <p class="text-[10px] text-slate-500 font-medium mt-1">Área: {{ vac.area }} • {{ vac.modalidadTrabajo }}</p>
+                    </div>
+
+                    <p class="text-[10px] text-slate-500 line-clamp-2 leading-relaxed italic">"{{ vac.descripcion }}"</p>
+
+                    <!-- Perfil Requerido -->
+                    @if (vac.perfilRequerido) {
+                      <div class="p-2.5 bg-blue-50/60 border border-blue-100 rounded-lg">
+                        <span class="text-[8px] text-blue-500 font-bold uppercase block mb-1">🎓 Perfil Requerido</span>
+                        <p class="text-[9px] text-blue-700 leading-relaxed line-clamp-2">{{ vac.perfilRequerido }}</p>
+                      </div>
+                    }
+
+                    <!-- Details Row -->
+                    <div class="grid grid-cols-2 gap-3 text-center border-t border-b border-slate-100 py-3 text-[10px]">
+                      <div class="border-r border-slate-100">
+                        <span class="text-slate-400 block font-bold uppercase text-[8px]">Cupos</span>
+                        <span class="font-bold text-slate-700 font-mono">{{ vac.cupos }} libres</span>
+                      </div>
+                      <div>
+                        <span class="text-slate-400 block font-bold uppercase text-[8px]">Fecha Límite</span>
+                        <span class="font-bold text-slate-700 font-mono">{{ vac.fechaLimite }}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Actions -->
+                  <div class="mt-4 flex gap-2 w-full pt-2">
+                    <button (click)="verDetalleVacante(vac)" class="flex-1 py-1.5 border border-slate-200 hover:border-unibe-blue text-slate-600 hover:text-unibe-blue font-bold rounded-lg transition-all text-[10px] tracking-wide uppercase">
+                      Ver Detalles
+                    </button>
+                    <button (click)="seleccionarVacanteParaPreferencias(vac)" class="flex-1 py-1.5 bg-unibe-blue hover:bg-unibe-blue-hover text-white font-bold rounded-lg transition-all text-[10px] tracking-wide uppercase">
+                      Postular
+                    </button>
+                  </div>
+                </div>
+              }
+            </div>
+          }
+        </div>
+      }
+
+      <!-- Tab 4: Postulación de Preferencias (Student View) -->
+      @if (activeTab() === 'preferencias_merit') {
+        <div class="space-y-6 text-xs max-w-4xl animate-fade-in">
+          <h3 class="text-sm font-bold text-slate-800 uppercase tracking-wide border-b border-slate-100 pb-3">Postulación de Preferencias por Meritocracia</h3>
+          <p class="text-slate-500 leading-relaxed">
+            Selecciona mínimo dos y máximo tres opciones compatibles. El promedio y el score oficial se calculan en backend con tu nota académica verificada del semestre anterior.
+          </p>
+
+          @if (miPostulacionActiva(); as post) {
+            <div class="p-5 bg-blue-50 border border-blue-100 rounded-xl">
+              <h4 class="font-bold text-unibe-blue uppercase tracking-wide">Ya tienes una postulación registrada</h4>
+              <p class="text-slate-600 mt-1">Puedes consultar tus preferencias y el estado actual desde Mi Avance.</p>
+              <button (click)="activeTab.set('mi_progreso')" class="mt-4 px-4 py-2 bg-unibe-blue text-white rounded-lg font-bold text-[10px]">Ir a seguimiento</button>
+            </div>
+          } @else {
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+              <div class="space-y-4 bg-slate-50 p-4 border border-slate-200 rounded-xl">
+                <div class="p-3 bg-white border border-slate-200 rounded-lg">
+                  <span class="text-[9px] text-slate-400 font-bold uppercase block">Etapa actual</span>
+                  <strong class="text-unibe-blue">{{ etapaEstudiante() }}</strong>
+                </div>
+
+                <div>
+              <label class="block font-bold text-slate-600 mb-1">Opción de Preferencia 1 *</label>
+              <select [(ngModel)]="pref1Id" class="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg outline-none">
+                <option [value]="null" disabled>Selecciona la primera opción...</option>
+                @for (vac of getFilteredVacantes(); track vac.id) {
+                  <option [value]="vac.id" [disabled]="opcionPreferenciaBloqueada(vac, pref1Id)">{{ vac.nombre }} (Empresa: {{ vac.empresa.nombre }})</option>
+                }
+              </select>
+            </div>
+
+                <div>
+              <label class="block font-bold text-slate-600 mb-1">Opción de Preferencia 2 *</label>
+              <select [(ngModel)]="pref2Id" class="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg outline-none">
+                <option [value]="null" disabled>Selecciona la segunda opción...</option>
+                @for (vac of getFilteredVacantes(); track vac.id) {
+                  <option [value]="vac.id" [disabled]="opcionPreferenciaBloqueada(vac, pref2Id)">{{ vac.nombre }} (Empresa: {{ vac.empresa.nombre }})</option>
+                }
+              </select>
+            </div>
+
+                <div>
+              <label class="block font-bold text-slate-600 mb-1">Opción de Preferencia 3 (Opcional)</label>
+              <select [(ngModel)]="pref3Id" class="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg outline-none">
+                <option [value]="null">Ninguna</option>
+                @for (vac of getFilteredVacantes(); track vac.id) {
+                  <option [value]="vac.id" [disabled]="opcionPreferenciaBloqueada(vac, pref3Id)">{{ vac.nombre }} (Empresa: {{ vac.empresa.nombre }})</option>
+                }
+              </select>
+            </div>
+
+                @if (preferenciasRepetidas()) {
+                  <div class="p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg font-bold">
+                    No puedes repetir la misma vacante en dos preferencias.
+                  </div>
+                }
+              </div>
+
+              <div class="space-y-4 bg-white p-4 border border-slate-200 rounded-xl">
+                <h4 class="font-bold text-slate-800 uppercase tracking-wide">Revisión antes de confirmar</h4>
+                @for (vac of preferenciasSeleccionadas(); track vac.id; let idx = $index) {
+                  <div class="p-3 border border-slate-200 rounded-lg bg-slate-50">
+                    <div class="flex justify-between gap-3 items-start">
+                      <div>
+                        <span class="text-[9px] text-slate-400 font-bold uppercase block">Preferencia {{ idx + 1 }}</span>
+                        <strong class="text-slate-800">{{ vac.nombre }}</strong>
+                        <p class="text-slate-500 mt-1">{{ vac.empresa.nombre }} • {{ vac.ciudad }} • {{ vac.modalidadTrabajo }}</p>
+                      </div>
+                      <button (click)="quitarPreferencia((idx + 1) === 1 ? 1 : ((idx + 1) === 2 ? 2 : 3))" class="px-2 py-1 bg-white border border-slate-200 text-slate-500 rounded text-[9px] font-bold">Quitar</button>
+                    </div>
+                    <div class="grid grid-cols-3 gap-2 mt-3 text-center">
+                      <div class="bg-white border border-slate-150 rounded p-2"><span class="block text-[8px] text-slate-400 font-bold uppercase">Cupos</span>{{ vac.cupos }}</div>
+                      <div class="bg-white border border-slate-150 rounded p-2"><span class="block text-[8px] text-slate-400 font-bold uppercase">Horas</span>{{ vac.horas }}</div>
+                      <div class="bg-white border border-slate-150 rounded p-2"><span class="block text-[8px] text-slate-400 font-bold uppercase">Límite</span>{{ vac.fechaLimite || convocatoriaFin }}</div>
+                    </div>
+                  </div>
+                }
+
+                @if (preferenciasSeleccionadas().length === 0) {
+                  <div class="p-6 text-center bg-slate-50 border border-dashed border-slate-200 rounded-lg text-slate-400">
+                    Selecciona tus opciones desde los campos de la izquierda o desde la pestaña de ofertas.
+                  </div>
+                }
+
+                <div class="p-3 bg-amber-50 border border-amber-200 text-amber-800 rounded-lg leading-relaxed">
+                  Al confirmar, el backend validará documentos, fechas, carrera, etapa, cupos y nota académica verificada. No se aceptan promedio ni score enviados desde la pantalla.
+                </div>
+
+                <div class="flex justify-end gap-2 pt-2">
+                  <button (click)="limpiarPreferencias()" class="px-4 py-2 bg-slate-100 text-slate-600 rounded-lg font-bold border border-slate-200">Limpiar</button>
+                  <button (click)="postularPreferencias()" [disabled]="!pref1Id || !pref2Id || preferenciasRepetidas() || enviandoPostulacion()" class="px-5 py-2.5 bg-unibe-blue hover:bg-unibe-blue-hover text-white font-bold rounded-lg shadow transition-all active:scale-[0.98] disabled:bg-slate-300 disabled:cursor-not-allowed">
+                    {{ enviandoPostulacion() ? 'Enviando…' : 'Confirmar Postulación' }}
+                  </button>
+                </div>
+              </div>
+            </div>
+          }
+        </div>
+      }
+
+      <!-- Tab 4: Mi Bitácora -->
+      @if (activeTab() === 'bitacora_estudiante') {
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 text-xs">
+          <div class="p-5 bg-slate-50 border border-slate-200 rounded-xl space-y-4 h-fit">
+            <h3 class="text-xs font-bold text-slate-800 uppercase tracking-wide border-b border-slate-200 pb-2">
+              {{ bitacoraEnCorreccion() ? 'Corregir bitácora observada' : 'Registrar actividad diaria / semanal' }}
+            </h3>
+            @if (bitacoraEnCorreccion()) {
+              <div class="rounded-lg border border-amber-200 bg-amber-50 p-3 text-amber-900">
+                <p class="font-bold">Observación del tutor</p>
+                <p class="mt-1 leading-relaxed">{{ bitacoraEnCorreccion()?.observacionesTutor }}</p>
+                <p class="mt-2 text-[10px] text-amber-700">Se actualizará esta misma bitácora y volverá a estado pendiente.</p>
+              </div>
+            }
+            <form (ngSubmit)="saveBitacora()" class="space-y-3">
+              <div>
+                <label class="block font-bold text-slate-600 mb-1">Parcial *</label>
+                <select [(ngModel)]="newBitacora.parcial" name="bitParcial" required [disabled]="!!bitacoraEnCorreccion()" class="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-slate-800 outline-none disabled:bg-slate-100 disabled:text-slate-500">
+                  <option [ngValue]="1">Parcial 1</option>
+                  <option [ngValue]="2">Parcial 2</option>
+                  <option [ngValue]="3">Parcial 3</option>
+                </select>
+              </div>
+              <div>
+                <label class="block font-bold text-slate-600 mb-1">Fecha de la Actividad *</label>
+                <input type="date" [(ngModel)]="newBitacora.fecha" name="bitFecha" required class="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-slate-800 outline-none" />
+              </div>
+              <div>
+                <label class="block font-bold text-slate-600 mb-1">Actividad Realizada *</label>
+                <textarea [(ngModel)]="newBitacora.actividad" name="bitAct" required rows="4" class="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-slate-800 outline-none resize-none" placeholder="Redacta la tarea realizada..."></textarea>
+              </div>
+              <div>
+                <label class="block font-bold text-slate-600 mb-1">Horas Invertidas *</label>
+                <input type="number" [(ngModel)]="newBitacora.horas" name="bitHoras" required class="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-slate-800 outline-none font-mono" min="1" max="8" />
+              </div>
+              <div>
+                <label class="block font-bold text-slate-600 mb-1">Observaciones</label>
+                <input type="text" [(ngModel)]="newBitacora.observaciones" name="bitObs" class="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-slate-800 outline-none" />
+              </div>
+              <div class="flex gap-2">
+                @if (bitacoraEnCorreccion()) {
+                  <button type="button" (click)="cancelarCorreccionBitacora()" [disabled]="guardandoBitacora()" class="flex-1 py-2 bg-white border border-slate-200 text-slate-700 font-bold rounded-lg disabled:opacity-60">Cancelar</button>
+                }
+                <button type="submit" [disabled]="guardandoBitacora()" class="flex-1 py-2 bg-unibe-blue hover:bg-unibe-blue-hover text-white font-bold rounded-lg shadow transition-all disabled:bg-slate-400 disabled:cursor-wait">
+                  {{ guardandoBitacora() ? 'Enviando...' : (bitacoraEnCorreccion() ? 'Reenviar corrección' : 'Enviar bitácora') }}
+                </button>
+              </div>
+            </form>
+          </div>
+
+          <div class="lg:col-span-2 space-y-4">
+            <h3 class="text-xs font-bold text-slate-800 uppercase tracking-wide">Historial de Mis Bitácoras</h3>
+            <div class="bg-white border border-slate-200 rounded-xl overflow-x-auto shadow-sm">
+              <table class="w-full text-left text-xs border-collapse">
+                <thead>
+                  <tr class="border-b border-slate-200 text-slate-400 font-bold uppercase bg-slate-50">
+                    <th class="p-3">Fecha</th>
+                    <th class="p-3 text-center">Parcial</th>
+                    <th class="p-3">Actividad</th>
+                    <th class="p-3 text-center">Horas</th>
+                    <th class="p-3 text-center">Estado</th>
+                    <th class="p-3 text-center">Acción</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100 text-slate-700">
+                  @for (b of misBitacoras(); track b.id) {
+                    <tr class="hover:bg-slate-50/50">
+                      <td class="p-3 font-mono font-semibold">{{ b.fecha }}</td>
+                      <td class="p-3 text-center font-mono font-bold">{{ b.parcial }}</td>
+                      <td class="p-3 italic">"{{ b.actividad }}"</td>
+                      <td class="p-3 text-center font-mono font-bold">{{ b.horas }} h</td>
+                      <td class="p-3 text-center">
+                        <span [class]="b.estado === 'aprobada' || (b.estado === 'requiere_correccion' && !correccionPendiente(b)) ? 'text-green-700 bg-green-50' : (b.estado === 'rechazada' ? 'text-red-700 bg-red-50' : (b.estado === 'requiere_correccion' ? 'text-orange-700 bg-orange-50' : 'text-amber-700 bg-amber-50'))" class="px-2 py-0.5 rounded text-[10px] font-bold uppercase">
+                          {{ b.estado === 'requiere_correccion' && !correccionPendiente(b) ? 'corrección resuelta' : b.estado }}
+                        </span>
+                        @if (b.observacionesTutor) {
+                          <div class="text-[9px] text-slate-400 mt-1">{{ b.observacionesTutor }}</div>
+                        }
+                      </td>
+                      <td class="p-3 text-center">
+                        @if (correccionPendiente(b)) {
+                          <button type="button" (click)="corregirBitacora(b)" class="rounded-lg border border-amber-300 bg-amber-50 px-3 py-1.5 font-bold text-amber-800 hover:bg-amber-100">
+                            Corregir
+                          </button>
+                        } @else {
+                          <span class="text-slate-300">-</span>
+                        }
+                      </td>
+                    </tr>
+                  } @empty {
+                    <tr>
+                      <td colspan="6" class="p-8 text-center text-slate-400 font-medium">Aún no has registrado bitácoras en esta práctica.</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      }
+    }
+  </div>
+
+  <!-- Vacante Modal (Coordinator Create Panel) -->
+  @if (showVacanteModal()) {
+    <div class="fixed inset-0 z-50 !mt-0 flex items-center justify-center bg-slate-950/65 backdrop-blur-sm p-2 sm:p-4 animate-fade-in overflow-y-auto">
+      <section
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="titulo-nueva-vacante"
+        class="flex max-h-[calc(100dvh-1rem)] w-full max-w-2xl flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-2xl sm:max-h-[calc(100dvh-2rem)]"
+      >
+        <div class="flex shrink-0 items-center justify-between border-b border-slate-200 bg-slate-50 p-4 sm:p-5">
+          <div>
+            <h3 id="titulo-nueva-vacante" class="text-xs font-bold text-unibe-blue uppercase tracking-wide">{{ vacanteEnEdicionId != null ? 'Editar Vacante de Prácticas' : 'Nueva Vacante de Prácticas' }}</h3>
+            <p class="mt-1 text-[11px] text-slate-500">Registra el campo profesional y los requisitos enviados por la empresa.</p>
+          </div>
+          <button type="button" (click)="showVacanteModal.set(false)" aria-label="Cerrar formulario de vacante" class="flex h-10 w-10 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-200 hover:text-slate-800 transition-colors">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" /></svg>
+          </button>
+        </div>
+        <form (ngSubmit)="saveVacante()" class="min-h-0 overflow-y-auto p-4 sm:p-6 space-y-4 text-xs">
+          <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div>
+              <label for="vacante-nombre" class="block font-bold text-slate-700 uppercase mb-2">Nombre de la vacante *</label>
+              <input id="vacante-nombre" type="text" name="vName" [(ngModel)]="newVacante.nombre" required class="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-lg outline-none focus:border-unibe-blue" />
+            </div>
+            <div>
+              <label for="vacante-area" class="block font-bold text-slate-700 uppercase mb-2">Campo profesional *</label>
+              <input id="vacante-area" type="text" name="vArea" [(ngModel)]="newVacante.area" required placeholder="Ej. Desarrollo web, nutrición clínica" class="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-lg outline-none focus:border-unibe-blue" />
+            </div>
+          </div>
+          <div>
+            <label for="vacante-empresa" class="block font-bold text-slate-700 uppercase mb-2">Empresa / institución receptora *</label>
+            <select id="vacante-empresa" name="vCompany" [ngModel]="newVacante.empresa" (ngModelChange)="onEmpresaVacanteChange($event)" [disabled]="vacanteEnEdicionId != null" required class="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-lg outline-none focus:border-unibe-blue disabled:cursor-not-allowed disabled:opacity-60">
+              <option [ngValue]="null" disabled>Selecciona la empresa receptora...</option>
+              @for (emp of empresas(); track emp.id) {
+                <option [ngValue]="emp" [disabled]="!empresaHabilitadaParaVacante(emp)">
+                  {{ emp.nombre }}{{ motivoEmpresaVacante(emp) ? ' — ' + motivoEmpresaVacante(emp) : '' }}
+                </option>
+              }
+            </select>
+            @if (newVacante.empresa) {
+              @if (carrerasDisponiblesVacante().length > 0) {
+                <p class="mt-2 text-[11px] font-medium text-emerald-700">
+                  Convenio vigente y {{ cuposDisponiblesEmpresaCarrera() }} cupo(s) libres para la carrera seleccionada.
+                </p>
+              } @else {
+                <p class="mt-2 text-[11px] font-medium text-red-700" role="alert">
+                  {{ motivoEmpresaVacante(newVacante.empresa) || 'La empresa no tiene carreras disponibles para una nueva vacante.' }}
+                </p>
+              }
+            }
+          </div>
+          <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <div>
+              <label for="vacante-cupos" class="block font-bold text-slate-700 uppercase mb-2">Cupos de la vacante *</label>
+              <input id="vacante-cupos" type="number" name="vCupos" [(ngModel)]="newVacante.cupos" min="1" [max]="cuposDisponiblesEmpresaCarrera() || null" required class="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-lg outline-none focus:border-unibe-blue" />
+              @if (newVacante.empresa && newVacante.carrera) {
+                <p class="mt-1 text-[10px] text-slate-500">Máximo disponible: {{ cuposDisponiblesEmpresaCarrera() }}</p>
+              }
+            </div>
+            <div>
+              <label for="vacante-horas" class="block font-bold text-slate-700 uppercase mb-2">Horas requeridas *</label>
+              <input id="vacante-horas" type="number" name="vHoras" [(ngModel)]="newVacante.horas" min="1" required class="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-lg outline-none focus:border-unibe-blue font-mono" />
+            </div>
+            <div>
+              <label for="vacante-carrera" class="block font-bold text-slate-700 uppercase mb-2">Carrera autorizada *</label>
+              <select id="vacante-carrera" name="vCarrera" [ngModel]="newVacante.carrera" (ngModelChange)="onCarreraVacanteChange($event)" required [disabled]="!newVacante.empresa || carrerasDisponiblesVacante().length === 0" class="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-lg outline-none focus:border-unibe-blue disabled:cursor-not-allowed disabled:opacity-60">
+                <option value="" disabled>Selecciona una carrera...</option>
+                @for (c of carrerasDisponiblesVacante(); track c) {
+                  <option [value]="c">{{ c }}</option>
+                }
+              </select>
+            </div>
+          </div>
+          <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div>
+              <label for="vacante-etapa" class="block font-bold text-slate-700 uppercase mb-2">Etapa académica *</label>
+              <select id="vacante-etapa" name="vMod" [(ngModel)]="newVacante.modalidadAcademica" required class="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-lg outline-none focus:border-unibe-blue">
+                <option value="Práctica I">Práctica I</option>
+                <option value="Práctica II">Práctica II</option>
+              </select>
+            </div>
+            <div>
+              <label for="vacante-modalidad" class="block font-bold text-slate-700 uppercase mb-2">Modalidad de trabajo *</label>
+              <select id="vacante-modalidad" name="vTrab" [(ngModel)]="newVacante.modalidadTrabajo" required class="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-lg outline-none focus:border-unibe-blue">
+                <option value="Presencial">Presencial</option>
+                <option value="Híbrida">Híbrida</option>
+                <option value="Virtual">Virtual</option>
+              </select>
+            </div>
+          </div>
+          <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div>
+              <label for="vacante-ciudad" class="block font-bold text-slate-700 uppercase mb-2">Ciudad *</label>
+              <input id="vacante-ciudad" type="text" name="vCiudad" [(ngModel)]="newVacante.ciudad" required class="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-lg outline-none focus:border-unibe-blue" />
+            </div>
+            <div>
+              <label for="vacante-fecha" class="block font-bold text-slate-700 uppercase mb-2">Fecha límite *</label>
+              <input id="vacante-fecha" type="date" name="vLimit" [(ngModel)]="newVacante.fechaLimite" required class="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-lg outline-none focus:border-unibe-blue" />
+            </div>
+          </div>
+          <div>
+            <label for="vacante-actividades" class="block font-bold text-slate-700 uppercase mb-2">Actividades principales *</label>
+            <textarea id="vacante-actividades" name="vDescripcion" [(ngModel)]="newVacante.descripcion" rows="3" required placeholder="Describe las funciones que realizará el estudiante." class="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-lg outline-none focus:border-unibe-blue text-xs resize-y"></textarea>
+          </div>
+          <div>
+            <label for="vacante-perfil" class="block font-bold text-slate-700 uppercase mb-2">Perfil profesional requerido *</label>
+            <textarea id="vacante-perfil" name="vPerfil" [(ngModel)]="newVacante.perfilRequerido" rows="3" required placeholder="Detalla conocimientos, habilidades y competencias requeridas." class="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-lg outline-none focus:border-unibe-blue text-xs resize-y"></textarea>
+          </div>
+          <div>
+            <label for="vacante-requisitos" class="block font-bold text-slate-700 uppercase mb-2">Requisitos adicionales</label>
+            <textarea id="vacante-requisitos" name="vRequisitos" [(ngModel)]="newVacante.requisitos" rows="2" placeholder="Herramientas, disponibilidad u otros requisitos opcionales." class="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-lg outline-none focus:border-unibe-blue text-xs resize-y"></textarea>
+          </div>
+          <div class="sticky bottom-0 -mx-4 -mb-4 flex flex-col-reverse gap-2 border-t border-slate-200 bg-white px-4 py-4 sm:-mx-6 sm:-mb-6 sm:flex-row sm:justify-end sm:px-6">
+            <button type="button" (click)="showVacanteModal.set(false)" class="min-h-10 px-4 py-2 bg-slate-100 text-slate-700 rounded-lg font-bold border border-slate-200 hover:bg-slate-200">Cancelar</button>
+            <button type="submit" [disabled]="guardandoVacante() || (vacanteEnEdicionId == null && carrerasDisponiblesVacante().length === 0)" class="min-h-10 px-4 py-2 bg-unibe-blue text-white rounded-lg font-bold shadow hover:bg-unibe-blue-hover disabled:cursor-not-allowed disabled:opacity-50">
+              {{ guardandoVacante() ? 'Guardando…' : (vacanteEnEdicionId != null ? 'Guardar cambios' : 'Publicar vacante') }}
+            </button>
+          </div>
+        </form>
+      </section>
+    </div>
+  }
+
+  <!-- Vacante Details Modal (Student View) -->
+  @if (showDetailModal() && selectedDetailVacante()) {
+    <div class="fixed inset-0 z-50 !mt-0 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-fade-in overflow-y-auto">
+      <div class="bg-white border border-slate-200 rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl">
+        <div class="p-5 border-b border-slate-200 bg-slate-50 flex justify-between items-center">
+          <h3 class="text-xs font-bold text-unibe-blue uppercase tracking-wide">Ficha Detallada de Oportunidad</h3>
+          <button (click)="showDetailModal.set(false)" class="text-slate-400 hover:text-slate-700 transition-all">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" /></svg>
+          </button>
+        </div>
+        <div class="p-6 space-y-4 text-xs text-slate-700 leading-normal">
+          <div class="flex justify-between items-start gap-4">
+            <div>
+              <h4 class="text-sm font-bold text-slate-800">{{ selectedDetailVacante()?.nombre }}</h4>
+              <p class="text-[10px] text-slate-400 font-bold uppercase mt-0.5">{{ selectedDetailVacante()?.empresa?.nombre }}</p>
+            </div>
+            <span class="px-2.5 py-1 bg-unibe-blue text-white font-bold rounded uppercase tracking-wider text-[8px]">
+              {{ selectedDetailVacante()?.modalidadAcademica }}
+            </span>
+          </div>
+
+          <div class="grid grid-cols-2 gap-4 bg-slate-50 p-4 border border-slate-200 rounded-xl font-medium">
+            <div><span class="text-slate-400 font-bold block uppercase text-[8px]">Área de Trabajo</span> {{ selectedDetailVacante()?.area }}</div>
+            <div><span class="text-slate-400 font-bold block uppercase text-[8px]">Ubicación</span> {{ selectedDetailVacante()?.ciudad }}</div>
+            <div><span class="text-slate-400 font-bold block uppercase text-[8px]">Modalidad Laboral</span> {{ selectedDetailVacante()?.modalidadTrabajo }}</div>
+            <div><span class="text-slate-400 font-bold block uppercase text-[8px]">Tipo de Institución</span> {{ selectedDetailVacante()?.tipoEmpresa }}</div>
+          </div>
+
+          <div class="space-y-1">
+            <span class="text-slate-400 font-bold block uppercase text-[8px]">Descripción General de Actividades</span>
+            <p class="text-slate-650 bg-slate-50/50 p-3 rounded-lg border border-slate-150">
+              {{ selectedDetailVacante()?.descripcion }}
+            </p>
+          </div>
+
+          <div class="space-y-1">
+            <span class="text-slate-400 font-bold block uppercase text-[8px]">Requisitos Técnicos</span>
+            <p class="text-slate-650 bg-slate-50/50 p-3 rounded-lg border border-slate-150">
+              {{ selectedDetailVacante()?.requisitos || 'Ninguno especificado.' }}
+            </p>
+          </div>
+
+          <div class="space-y-1">
+            <span class="text-blue-500 font-bold block uppercase text-[8px]">🎓 Perfil Profesional Requerido</span>
+            <p class="text-blue-700 bg-blue-50/50 p-3 rounded-lg border border-blue-150 leading-relaxed">
+              {{ selectedDetailVacante()?.perfilRequerido || 'No se especificó un perfil requerido para esta vacante.' }}
+            </p>
+          </div>
+
+          <div class="grid grid-cols-3 gap-3 bg-slate-50 p-3 border border-slate-200 rounded-xl text-center">
+            <div>
+              <span class="text-slate-400 font-bold block uppercase text-[8px]">Cupos Disponibles</span>
+              <span class="font-bold text-slate-800 font-mono">{{ selectedDetailVacante()?.cupos }}</span>
+            </div>
+            <div>
+              <span class="text-slate-400 font-bold block uppercase text-[8px]">Horas Requeridas</span>
+              <span class="font-bold text-slate-800 font-mono">{{ selectedDetailVacante()?.horas }} h</span>
+            </div>
+            <div>
+              <span class="text-slate-400 font-bold block uppercase text-[8px]">Fecha Límite</span>
+              <span class="font-bold text-slate-800 font-mono">{{ selectedDetailVacante()?.fechaLimite }}</span>
+            </div>
+          </div>
+
+          <div class="pt-4 border-t border-slate-200 flex justify-end gap-3">
+            <button (click)="showDetailModal.set(false)" class="px-4 py-2 bg-slate-150 text-slate-650 rounded-lg font-bold border border-slate-200 hover:bg-slate-200 transition-all">Cerrar Ficha</button>
+            <button (click)="showDetailModal.set(false); activeTab.set('preferencias_merit')" class="px-4 py-2 bg-unibe-blue text-white rounded-lg font-bold shadow hover:bg-unibe-blue-hover transition-all">Postular Ahora</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- Manual Adjustment Override Modal -->
+  @if (showAjusteModal()) {
+    <div class="fixed inset-0 z-50 !mt-0 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-fade-in overflow-y-auto">
+      <div class="bg-white border border-slate-200 rounded-2xl w-full max-w-md overflow-hidden shadow-2xl">
+        <div class="p-5 border-b border-slate-200 bg-slate-50 flex justify-between items-center">
+          <h3 class="text-xs font-bold text-unibe-blue uppercase tracking-wide">Ajuste Manual de Asignación</h3>
+          <button (click)="showAjusteModal.set(false)" class="text-slate-400 hover:text-slate-700 transition-all">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" /></svg>
+          </button>
+        </div>
+        <div class="p-6 space-y-4 text-xs">
+          <div class="p-3 bg-slate-50 border border-slate-200 rounded-xl">
+            <span class="text-[9px] text-slate-400 font-bold uppercase block">Reasignar Alumno:</span>
+            <div class="font-bold text-slate-800 text-xs">{{ postNombre(selectedPostForAjuste()) }}</div>
+          </div>
+
+          <div>
+            <label class="block font-bold text-slate-700 uppercase mb-2">Seleccionar Empresa de Destino *</label>
+            <select [(ngModel)]="ajusteEmpresaId" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg outline-none focus:border-unibe-blue">
+              <option [value]="null" disabled>Selecciona vacante destino...</option>
+              @for (vac of getFilteredVacantes(); track vac.id) {
+                <option [value]="vac.id">{{ vac.nombre }} (Empresa: {{ vac.empresa.nombre }})</option>
+              }
+            </select>
+          </div>
+
+          <div>
+            <label class="block font-bold text-slate-700 uppercase mb-2">Justificación del Ajuste (Obligatorio por Auditoría) *</label>
+            <textarea [(ngModel)]="ajusteJustificacion" rows="3" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg outline-none focus:border-unibe-blue resize-none" placeholder="Motivo administrativo del cambio..."></textarea>
+          </div>
+
+          <div class="pt-4 border-t border-slate-200 flex justify-end gap-3">
+            <button (click)="showAjusteModal.set(false)" [disabled]="guardandoAjuste()" class="px-4 py-2 bg-slate-100 text-slate-650 rounded-lg font-bold border border-slate-200 disabled:opacity-60 disabled:cursor-not-allowed">Cancelar</button>
+            <button (click)="saveManualAdjustment()" [disabled]="guardandoAjuste()" class="px-4 py-2 bg-unibe-blue text-white rounded-lg font-bold shadow disabled:opacity-60 disabled:cursor-not-allowed">
+              {{ guardandoAjuste() ? 'Guardando…' : 'Guardar Ajuste' }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  }
+
+  @if (actaAbierta(); as actaModal) {
+    <app-acta-cierre-modal
+      [titulo]="actaModal.titulo"
+      [acta]="actaModal.acta"
+      (cerrar)="actaAbierta.set(null)"
+    />
+  }
+
+  <!-- Grading Rubric Modal -->
+  @if (selectedPracticaForGrading()) {
+    <app-calificacion-modal
+      proceso="Prácticas"
+      [estudiante]="((selectedPracticaForGrading()?.estudiante?.usuario?.nombre || '') + ' ' + (selectedPracticaForGrading()?.estudiante?.usuario?.apellido || '')).trim()"
+      [parcial]="selectedParcial()"
+      [rol]="userRole()"
+      [notaTutor]="tGrade"
+      [notaCoordinacion]="cGrade"
+      [guardando]="guardandoCalificacion()"
+      (notaTutorChange)="tGrade = $event"
+      (notaCoordinacionChange)="cGrade = $event"
+      (guardar)="saveRubricGrade()"
+      (cerrar)="selectedPracticaForGrading.set(null)"
+    />
+  }
+
+  <!-- Likert Survey Modal -->
+  @if (showSurveyModal()) {
+    <div class="fixed inset-0 z-50 !mt-0 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-fade-in overflow-y-auto">
+      <div class="bg-white border border-slate-200 rounded-2xl w-full max-w-md overflow-hidden shadow-2xl">
+        <div class="p-5 border-b border-slate-200 bg-slate-50 flex justify-between items-center">
+          <h3 class="text-xs font-bold text-unibe-blue uppercase tracking-wide">Encuesta de Satisfacción y Pertinencia</h3>
+          <button (click)="showSurveyModal.set(false)" class="text-slate-400 hover:text-slate-700 transition-all">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" /></svg>
+          </button>
+        </div>
+        <form (ngSubmit)="saveSurvey()" class="p-6 space-y-5 text-xs">
+          <p class="text-[10px] text-slate-400 leading-normal">
+            Responde de 1 a 5 (donde 1 es muy bajo y 5 es excelente) según tu percepción en este parcial:
+          </p>
+
+          <div class="space-y-2">
+            <label class="block font-bold text-slate-700">1. Desempeño del Tutor Académico (Atención, seguimiento, comunicación) *</label>
+            <div class="flex justify-between gap-2">
+              @for (v of [1,2,3,4,5]; track v) {
+                <label class="flex flex-col items-center gap-1 cursor-pointer">
+                  <input type="radio" name="tutS" [(ngModel)]="surveyAnswers.tutorScore" [value]="v" class="accent-unibe-blue" />
+                  <span class="font-mono text-[10px]">{{ v }}</span>
+                </label>
+              }
+            </div>
+          </div>
+
+          <div class="space-y-2">
+            <label class="block font-bold text-slate-700">2. Empresa Receptora (Ambiente de aprendizaje, apoyo de tutores externos) *</label>
+            <div class="flex justify-between gap-2">
+              @for (v of [1,2,3,4,5]; track v) {
+                <label class="flex flex-col items-center gap-1 cursor-pointer">
+                  <input type="radio" name="compS" [(ngModel)]="surveyAnswers.companyScore" [value]="v" class="accent-unibe-blue" />
+                  <span class="font-mono text-[10px]">{{ v }}</span>
+                </label>
+              }
+            </div>
+          </div>
+
+          <div class="space-y-2">
+            <label class="block font-bold text-slate-700">3. Pertinencia Profesional (¿Las actividades se relacionan con tu carrera?) *</label>
+            <div class="flex justify-between gap-2">
+              @for (v of [1,2,3,4,5]; track v) {
+                <label class="flex flex-col items-center gap-1 cursor-pointer">
+                  <input type="radio" name="relS" [(ngModel)]="surveyAnswers.relevanceScore" [value]="v" class="accent-unibe-blue" />
+                  <span class="font-mono text-[10px]">{{ v }}</span>
+                </label>
+              }
+            </div>
+          </div>
+
+          <div class="space-y-2">
+            <label class="block font-bold text-slate-700">4. Claridad de instrucciones y objetivos del parcial *</label>
+            <div class="flex justify-between gap-2">
+              @for (v of [1,2,3,4,5]; track v) {
+                <label class="flex flex-col items-center gap-1 cursor-pointer">
+                  <input type="radio" name="clarityS" [(ngModel)]="surveyAnswers.clarityScore" [value]="v" class="accent-unibe-blue" />
+                  <span class="font-mono text-[10px]">{{ v }}</span>
+                </label>
+              }
+            </div>
+          </div>
+
+          <div class="space-y-2">
+            <label class="block font-bold text-slate-700">Comentario opcional</label>
+            <textarea [(ngModel)]="surveyAnswers.comment" name="commentS" rows="3" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg outline-none focus:border-unibe-blue resize-none" placeholder="Comparte una observación breve para coordinación..."></textarea>
+          </div>
+
+          <div class="pt-4 border-t border-slate-200 flex justify-end gap-3">
+            <button type="button" [disabled]="guardandoEncuesta()" (click)="showSurveyModal.set(false)" class="px-4 py-2 bg-slate-100 text-slate-650 rounded-lg font-bold border border-slate-200 disabled:cursor-not-allowed disabled:opacity-60">Cancelar</button>
+            <button type="submit" [disabled]="guardandoEncuesta()" class="px-4 py-2 bg-unibe-blue text-white rounded-lg font-bold shadow disabled:cursor-not-allowed disabled:opacity-60">{{ guardandoEncuesta() ? 'Enviando…' : 'Enviar Encuesta' }}</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  }
+  <!-- Modal de Supervisión del Expediente (Coordinator View) -->
+  @if (showSeguimientoModal() && selectedPracForSeguimiento()) {
+    <div class="fixed inset-0 z-50 !mt-0 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-fade-in overflow-y-auto">
+      <div class="bg-white border border-slate-200 rounded-2xl w-full max-w-3xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
+        <div class="p-5 border-b border-slate-200 bg-slate-50 flex justify-between items-center">
+          <div>
+            <h3 class="text-xs font-bold text-unibe-blue uppercase tracking-wide">Expediente de Supervisión Académica</h3>
+            <p class="text-[10px] text-slate-400 font-bold uppercase mt-0.5">{{ selectedPracForSeguimiento()?.estudiante?.usuario?.nombre }} {{ selectedPracForSeguimiento()?.estudiante?.usuario?.apellido }}</p>
+          </div>
+          <button (click)="closeSeguimientoModal()" class="text-slate-400 hover:text-slate-700 transition-all">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" /></svg>
+          </button>
+        </div>
+
+        <div class="p-6 overflow-y-auto space-y-6 text-xs text-slate-700">
+          <!-- Student & Enterprise Header Card -->
+          <div class="grid grid-cols-3 gap-4 p-4 bg-slate-50 border border-slate-200 rounded-xl">
+            <div>
+              <span class="text-[10px] text-slate-400 font-bold uppercase">Carrera</span>
+              <div class="font-bold text-slate-800 mt-0.5">{{ selectedPracForSeguimiento()?.estudiante?.carrera }}</div>
+            </div>
+            <div>
+              <span class="text-[10px] text-slate-400 font-bold uppercase">Empresa Receptora</span>
+              <div class="font-bold text-unibe-blue mt-0.5">{{ selectedPracForSeguimiento()?.empresa?.nombre }}</div>
+            </div>
+            <div>
+              <span class="text-[10px] text-slate-400 font-bold uppercase">Tutor Asignado</span>
+              <div class="font-bold text-slate-800 mt-0.5">{{ selectedPracForSeguimiento()?.tutor ? (selectedPracForSeguimiento()?.tutor?.nombre + ' ' + selectedPracForSeguimiento()?.tutor?.apellido) : 'Sin asignar' }}</div>
+            </div>
+          </div>
+
+          <!-- Hours Progress Bar -->
+          <div class="space-y-2">
+            <div class="flex justify-between items-center font-bold text-slate-700 text-[10px] uppercase">
+              <span>Avance de Horas del Alumno</span>
+              <span class="font-mono text-xs">{{ selectedPracForSeguimiento()?.horasCompletadas || 0 }} / {{ selectedPracForSeguimiento()?.horasRequeridas }} h</span>
+            </div>
+            <div class="w-full bg-slate-100 border border-slate-200 rounded-full h-3 overflow-hidden">
+              <div class="bg-unibe-blue h-3 rounded-full transition-all duration-500" [style.width.%]="(((selectedPracForSeguimiento()?.horasCompletadas || 0) / (selectedPracForSeguimiento()?.horasRequeridas || 120)) * 100)"></div>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- Left Column: Attendance logs -->
+            <div class="space-y-3">
+              <h4 class="font-bold text-slate-800 uppercase tracking-wider border-b border-slate-100 pb-2">📋 Asistencias y Faltas (Tutor)</h4>
+              <div class="max-h-60 overflow-y-auto border border-slate-200 rounded-xl divide-y divide-slate-150">
+                @if (getAsistenciasForPractica(selectedPracForSeguimiento()?.id!).length === 0) {
+                  <div class="p-4 text-center text-slate-400 italic">Sin registros de asistencia cargados por el tutor.</div>
+                }
+                @for (a of getAsistenciasForPractica(selectedPracForSeguimiento()?.id!); track a.id) {
+                  <div class="p-3 space-y-1.5 hover:bg-slate-50 transition-all">
+                    <div class="flex justify-between items-center font-bold text-slate-700">
+                      <span>{{ a.fecha }}</span>
+                      <span [class]="a.estado === 'Presente' ? 'text-green-600 bg-green-50 border border-green-200 px-2 py-0.5 rounded text-[9px]' : (a.estado === 'Atraso' ? 'text-amber-600 bg-amber-50 border border-amber-255 px-2 py-0.5 rounded text-[9px]' : 'text-red-600 bg-red-50 border border-red-200 px-2 py-0.5 rounded text-[9px]')">
+                        {{ a.estado }}
+                      </span>
+                    </div>
+                    @if (a.observaciones) {
+                      <p class="text-[10px] text-slate-500 font-medium italic">"{{ a.observaciones }}"</p>
+                    }
+                  </div>
+                }
+              </div>
+            </div>
+
+            <!-- Right Column: Bitacoras logged -->
+            <div class="space-y-3">
+              <h4 class="font-bold text-slate-800 uppercase tracking-wider border-b border-slate-100 pb-2">📖 Bitácoras Diarias (Estudiante)</h4>
+              <div class="max-h-60 overflow-y-auto border border-slate-200 rounded-xl divide-y divide-slate-150">
+                @if (getBitacorasForStudent(selectedPracForSeguimiento()?.estudiante?.id!).length === 0) {
+                  <div class="p-4 text-center text-slate-400 italic">El estudiante no ha enviado bitácoras aún.</div>
+                }
+                @for (b of getBitacorasForStudent(selectedPracForSeguimiento()?.estudiante?.id!); track b.id) {
+                  <div class="p-3 space-y-1.5 hover:bg-slate-50 transition-all">
+                    <div class="flex justify-between items-center font-bold text-slate-700">
+                      <span>{{ b.fecha }} ({{ b.horas }} horas)</span>
+                      <span [class]="b.estado === 'aprobada' ? 'text-green-600 font-bold uppercase text-[9px]' : (b.estado === 'rechazada' ? 'text-red-600 font-bold uppercase text-[9px]' : 'text-slate-400 font-bold uppercase text-[9px]')">
+                        {{ b.estado }}
+                      </span>
+                    </div>
+                    <p class="text-[10px] text-slate-600 leading-normal">{{ b.actividad }}</p>
+                    @if (b.observacionesTutor) {
+                      <p class="text-[10px] text-slate-500 font-medium italic mt-1">"{{ b.observacionesTutor }}"</p>
+                    }
+                  </div>
+                }
+              </div>
+            </div>
+          </div>
+
+          <!-- Encuestas de satisfaccion por parcial -->
+          <div class="space-y-3">
+            <h4 class="font-bold text-slate-800 uppercase tracking-wider border-b border-slate-100 pb-2">📊 Encuestas de Satisfacción</h4>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+              @for (parcial of [1, 2, 3]; track parcial) {
+                <div class="p-3 border border-slate-200 rounded-xl bg-white">
+                  <span class="block text-[10px] text-slate-400 font-bold uppercase">Parcial {{ parcial }}</span>
+                  @if (encuestaDe(parcial); as encuesta) {
+                    <div class="mt-2 space-y-1 text-[11px] text-slate-600">
+                      <div class="flex justify-between"><span>Satisfacción con el tutor</span><strong>{{ encuesta.satisfaccionTutor }}/5</strong></div>
+                      <div class="flex justify-between"><span>Satisfacción con la empresa</span><strong>{{ encuesta.satisfaccionEmpresaProyecto }}/5</strong></div>
+                      <div class="flex justify-between"><span>Relación con la carrera</span><strong>{{ encuesta.relacionCarrera }}/5</strong></div>
+                      <div class="flex justify-between"><span>Claridad de instrucciones</span><strong>{{ encuesta.claridadInstrucciones }}/5</strong></div>
+                      @if (encuesta.comentario) {
+                        <p class="mt-1 italic text-slate-500">"{{ encuesta.comentario }}"</p>
+                      }
+                    </div>
+                  } @else {
+                    <p class="mt-2 text-[11px] text-slate-400 italic">Aún no completada.</p>
+                  }
+                </div>
+              }
+            </div>
+          </div>
+
+          <!-- Comentarios del coordinador (constancia de seguimiento) -->
+          <div class="space-y-3">
+            <h4 class="font-bold text-slate-800 uppercase tracking-wider border-b border-slate-100 pb-2">💬 Comentarios del Coordinador</h4>
+            @if (comentariosCoordinacionSeguimiento().length === 0) {
+              <p class="text-[11px] text-slate-400 italic">Sin comentarios de coordinación registrados.</p>
+            } @else {
+              <ul class="space-y-2 max-h-48 overflow-y-auto">
+                @for (comentario of comentariosCoordinacionSeguimiento(); track comentario.id) {
+                  <li class="p-3 border border-slate-200 rounded-lg bg-white">
+                    <div class="flex justify-between text-[10px] text-slate-400 font-bold uppercase">
+                      <span>{{ comentario.autor?.nombre }} {{ comentario.autor?.apellido }}</span>
+                      <span>{{ comentario.fechaCreacion | date:'dd/MM/yyyy HH:mm' }}</span>
+                    </div>
+                    <p class="mt-1 text-[11px] text-slate-700 leading-relaxed">{{ comentario.mensaje }}</p>
+                  </li>
+                }
+              </ul>
+            }
+          </div>
+        </div>
+
+        <div class="p-5 border-t border-slate-200 bg-slate-50 flex justify-end">
+          <button (click)="closeSeguimientoModal()" class="px-5 py-2 bg-unibe-blue text-white rounded-lg font-bold shadow hover:bg-unibe-blue-hover transition-all">Cerrar Expediente</button>
+        </div>
+      </div>
+    </div>
+  }
+</div>
+
+@if (historialPersonal(); as seleccionado) {
+  <app-linea-tiempo-expediente
+    [titulo]="'Historial de mi práctica · ' + (seleccionado.empresa.nombre || 'Expediente')"
+    [lineaTiempo]="historialPersonalSeleccionado()"
+    [cargando]="lineaTiempoPersonalCargando()"
+    (cerrar)="cerrarHistorialPersonal()"
+  />
+}
+
+@if (liberandoPractica(); as pracLiberar) {
+  <div class="fixed inset-0 !mt-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center animate-fade-in p-4 overflow-y-auto">
+    <div class="bg-white rounded-2xl w-full max-w-md overflow-hidden shadow-2xl">
+      <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+        <h3 class="font-bold text-slate-800 text-sm">Liberar cupo del retiro</h3>
+        <button (click)="liberandoPractica.set(null)" aria-label="Cerrar" class="text-slate-400 hover:text-red-500 transition-colors">✕</button>
+      </div>
+      <form (ngSubmit)="confirmarLiberarCupo()" class="p-6 space-y-4 text-xs">
+        <p class="text-slate-600 leading-relaxed">
+          El cupo de <strong>{{ pracLiberar.estudiante.usuario.nombre }} {{ pracLiberar.estudiante.usuario.apellido }}</strong>
+          en <strong>{{ pracLiberar.empresa.nombre }}</strong> volverá a estar disponible para un reemplazo
+          dentro del mismo periodo. Esta acción se registra en auditoría y no puede repetirse.
+        </p>
+        <div>
+          <label for="motivo-liberacion-practica" class="block font-bold text-slate-500 uppercase text-[10px] mb-1">Motivo (mínimo 10 caracteres)</label>
+          <textarea id="motivo-liberacion-practica" name="motivoLiberacion" [(ngModel)]="motivoLiberacion" rows="3" required class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg outline-none focus:border-unibe-blue resize-y"></textarea>
+        </div>
+        <div class="flex justify-end gap-3 pt-2 border-t border-slate-100">
+          <button type="button" (click)="liberandoPractica.set(null)" class="px-4 py-2 bg-slate-100 text-slate-600 rounded-lg font-bold border border-slate-200">Cancelar</button>
+          <button type="submit" [disabled]="liberandoCupo()" class="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg font-bold shadow disabled:opacity-50 disabled:cursor-not-allowed">
+            {{ liberandoCupo() ? 'Liberando…' : 'Liberar cupo' }}
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+}
+
+@if (comentarioPractica(); as practicaComentario) {
+  <app-comentarios-seguimiento-modal
+    proceso="PRACTICAS"
+    [expedienteId]="practicaComentario.id!"
+    [titulo]="'Comunicaciones · ' + practicaComentario.estudiante.usuario.nombre + ' ' + practicaComentario.estudiante.usuario.apellido"
+    [rol]="userRole()"
+    [cerrado]="expedienteTerminal(practicaComentario.estado)"
+    (cerrar)="cerrarComunicaciones()"
+  />
+}

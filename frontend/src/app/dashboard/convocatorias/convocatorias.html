@@ -1,0 +1,177 @@
+<div class="space-y-5">
+  <!-- Encabezado -->
+  <div class="bg-white p-5 border border-slate-200 rounded-lg shadow-sm flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+    <div>
+      <h2 class="text-base font-bold text-unibe-blue uppercase tracking-wide">Convocatorias & Plazos</h2>
+      <p class="text-xs text-slate-500 font-medium mt-1">
+        Ventanas de convocatoria de Prácticas y Vinculación del periodo
+        <span class="font-mono font-bold text-unibe-blue">{{ periodoActual() }}</span>.
+        Estas fechas controlan cuándo los estudiantes ven las ofertas y pueden postularse.
+      </p>
+    </div>
+    @if (!esAdmin()) {
+      <span class="text-[10px] text-slate-400 font-bold uppercase tracking-wider shrink-0">🔒 Solo Administración modifica estas fechas</span>
+    }
+  </div>
+
+  <section class="bg-white border border-slate-200 rounded-lg shadow-sm p-5 space-y-4">
+    <div class="flex flex-col gap-2 border-b border-slate-100 pb-3 sm:flex-row sm:items-center sm:justify-between">
+      <div>
+        <h3 class="text-sm font-bold text-slate-800 uppercase tracking-wide">Periodos académicos</h3>
+        <p class="mt-1 text-[11px] text-slate-500">El periodo activo controla convocatorias, ofertas, vacantes y proyectos.</p>
+      </div>
+      <span class="w-fit rounded border border-blue-200 bg-blue-50 px-2.5 py-1 font-mono text-[10px] font-bold text-unibe-blue">Activo: {{ periodoActual() }}</span>
+    </div>
+
+    <div class="overflow-x-auto border-y border-slate-200">
+      <table class="w-full min-w-[620px] text-left text-xs">
+        <thead class="bg-slate-50 text-[10px] font-bold uppercase text-slate-500">
+          <tr><th class="p-3">Código</th><th class="p-3">Inicio</th><th class="p-3">Fin</th><th class="p-3">Estado</th>@if (esAdmin()) { <th class="p-3 text-right">Acciones</th> }</tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100">
+          @for (item of periodos(); track item.id) {
+            <tr>
+              <td class="p-3 font-mono font-bold text-slate-800">{{ item.codigo }}</td>
+              <td class="p-3 text-slate-600">{{ item.fechaInicio }}</td>
+              <td class="p-3 text-slate-600">{{ item.fechaFin }}</td>
+              <td class="p-3"><span class="rounded border px-2 py-0.5 text-[10px] font-bold" [class]="item.estado === 'ACTIVO' ? 'border-green-200 bg-green-50 text-green-700' : item.estado === 'CERRADO' ? 'border-slate-200 bg-slate-100 text-slate-500' : 'border-amber-200 bg-amber-50 text-amber-700'">{{ item.estado }}</span></td>
+              @if (esAdmin()) {
+                <td class="p-3 text-right whitespace-nowrap">
+                  @if (item.estado !== 'CERRADO') {
+                    <button type="button" (click)="editarPeriodo(item)" class="min-h-9 px-3 text-[10px] font-bold text-unibe-blue hover:underline">Editar</button>
+                    <button type="button" (click)="cerrarPeriodo(item)" [disabled]="cerrandoPeriodoId() !== null" title="Expira postulaciones pendientes y bloquea nuevas asignaciones del periodo" class="min-h-9 px-3 text-[10px] font-bold text-amber-700 hover:underline disabled:opacity-50">
+                      {{ cerrandoPeriodoId() === item.id ? 'Cerrando…' : 'Cerrar' }}
+                    </button>
+                  }
+                  @if (item.estado === 'PLANIFICADO') {
+                    <button type="button" (click)="eliminarPeriodo(item)" class="min-h-9 px-3 text-[10px] font-bold text-red-600 hover:underline">Eliminar</button>
+                  }
+                </td>
+              }
+            </tr>
+          } @empty {
+            <tr><td [attr.colspan]="esAdmin() ? 5 : 4" class="p-6 text-center text-slate-400">No hay periodos académicos configurados.</td></tr>
+          }
+        </tbody>
+      </table>
+    </div>
+
+    @if (esAdmin()) {
+      <form (ngSubmit)="guardarPeriodo()" class="grid grid-cols-1 items-end gap-3 border-t border-slate-100 pt-4 sm:grid-cols-2 xl:grid-cols-[9rem_1fr_1fr_10rem_auto]">
+        <label class="block"><span class="mb-1.5 block text-[10px] font-bold uppercase text-slate-500">Código *</span><input name="periodoCodigo" [(ngModel)]="currentPeriodo.codigo" [disabled]="editandoPeriodo" placeholder="2027-1" required class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-mono outline-none focus:border-unibe-blue disabled:opacity-60" /></label>
+        <label class="block"><span class="mb-1.5 block text-[10px] font-bold uppercase text-slate-500">Fecha de inicio *</span><input type="date" name="periodoInicio" [(ngModel)]="currentPeriodo.fechaInicio" required class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs outline-none focus:border-unibe-blue" /></label>
+        <label class="block"><span class="mb-1.5 block text-[10px] font-bold uppercase text-slate-500">Fecha de fin *</span><input type="date" name="periodoFin" [(ngModel)]="currentPeriodo.fechaFin" required class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs outline-none focus:border-unibe-blue" /></label>
+        <label class="block"><span class="mb-1.5 block text-[10px] font-bold uppercase text-slate-500">Estado *</span><select name="periodoEstado" [(ngModel)]="currentPeriodo.estado" [disabled]="periodoActivoEnEdicion()" class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs outline-none focus:border-unibe-blue disabled:cursor-not-allowed disabled:opacity-60"><option value="PLANIFICADO">Planificado</option><option value="ACTIVO">Activo</option></select></label>
+        <div class="flex gap-2 sm:col-span-2 xl:col-span-1">
+          @if (editandoPeriodo) { <button type="button" (click)="nuevoPeriodo()" class="min-h-10 rounded-lg border border-slate-200 bg-slate-100 px-3 text-xs font-bold text-slate-700">Cancelar</button> }
+          <button type="submit" [disabled]="guardandoPeriodo()" class="min-h-10 flex-1 rounded-lg bg-unibe-blue px-4 text-xs font-bold text-white hover:bg-unibe-blue-hover disabled:opacity-50">{{ guardandoPeriodo() ? 'Guardando…' : (editandoPeriodo ? 'Actualizar' : 'Agregar') }}</button>
+        </div>
+      </form>
+    }
+  </section>
+
+  @if (loading()) {
+    <div class="flex items-center justify-center gap-3 p-10 bg-white border border-slate-200 rounded-lg shadow-sm text-xs text-slate-500 font-bold">
+      <span class="w-5 h-5 rounded-full border-2 border-slate-200 border-t-unibe-blue animate-spin"></span>
+      Cargando configuración...
+    </div>
+  } @else {
+    <div class="grid grid-cols-1 xl:grid-cols-2 gap-5">
+      @for (form of formulariosVisibles(); track form.tipo) {
+        <div class="bg-white border border-slate-200 rounded-lg shadow-sm p-5 space-y-4">
+          <!-- Título + estado -->
+          <div class="flex items-start justify-between gap-3 border-b border-slate-100 pb-3">
+            <div>
+              <h3 class="text-sm font-bold text-slate-800 uppercase tracking-wide">{{ form.titulo }}</h3>
+              <p class="text-[11px] text-slate-500 mt-1 leading-relaxed">{{ form.descripcion }}</p>
+            </div>
+            <span [class]="estadoConvocatoria(form).clase" class="shrink-0 px-2.5 py-1 border rounded-full text-[10px] font-bold uppercase tracking-wide">
+              {{ estadoConvocatoria(form).etiqueta }}
+            </span>
+          </div>
+
+          @if (form.periodoOrigen && form.periodoOrigen !== periodoActual()) {
+            <p class="text-[10px] text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 font-semibold">
+              Mostrando las fechas del periodo {{ form.periodoOrigen }}. Al guardar se registrarán para el periodo actual {{ periodoActual() }}.
+            </p>
+          }
+
+          <!-- Fechas en orden cronológico -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <label class="block">
+              <span class="block text-[10px] font-bold uppercase text-slate-500 mb-1.5">1. Inicio de convocatoria</span>
+              <input type="date" [(ngModel)]="form.convocatoriaInicio" [disabled]="!esAdmin()"
+                class="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-slate-800 text-xs outline-none focus:border-unibe-blue disabled:bg-slate-100 disabled:text-slate-400" />
+            </label>
+            <label class="block">
+              <span class="block text-[10px] font-bold uppercase text-slate-500 mb-1.5">2. Límite subida de documentos</span>
+              <input type="date" [(ngModel)]="form.fechaLimiteDocumentos" [disabled]="!esAdmin()"
+                class="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-slate-800 text-xs outline-none focus:border-unibe-blue disabled:bg-slate-100 disabled:text-slate-400" />
+            </label>
+            <label class="block">
+              <span class="block text-[10px] font-bold uppercase text-amber-600 mb-1.5">3. Apertura de postulación</span>
+              <input type="date" [(ngModel)]="form.fechaInicioPostulacion" [disabled]="!esAdmin()"
+                class="w-full px-3 py-2 bg-white border border-amber-200 rounded-lg text-slate-800 text-xs outline-none focus:border-amber-500 disabled:bg-slate-100 disabled:text-slate-400" />
+            </label>
+            <label class="block">
+              <span class="block text-[10px] font-bold uppercase text-slate-500 mb-1.5">4. Cierre de convocatoria</span>
+              <input type="date" [(ngModel)]="form.convocatoriaFin" [disabled]="!esAdmin()"
+                class="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-slate-800 text-xs outline-none focus:border-unibe-blue disabled:bg-slate-100 disabled:text-slate-400" />
+            </label>
+          </div>
+
+          <p class="text-[10px] text-slate-400">
+            El orden debe ser: inicio de convocatoria → límite de documentos → apertura de postulación → cierre.
+            Para que los estudiantes puedan postularse hoy, la apertura de postulación debe ser hoy o una fecha pasada.
+          </p>
+
+          @if (esAdmin()) {
+            <div class="flex justify-end pt-1">
+              <button type="button" (click)="guardar(form)" [disabled]="guardandoTipo() === form.tipo"
+                class="px-4 py-2 bg-unibe-blue hover:bg-unibe-blue-hover disabled:bg-slate-300 text-white text-xs font-bold rounded-lg shadow transition-all flex items-center gap-2">
+                @if (guardandoTipo() === form.tipo) {
+                  <span class="w-4 h-4 rounded-full border-2 border-white/40 border-t-white animate-spin"></span>
+                }
+                Guardar fechas
+              </button>
+            </div>
+          }
+        </div>
+      }
+    </div>
+  }
+
+  <!-- Catálogo de carreras (fase 27) -->
+  @if (esAdmin()) {
+    <div class="bg-white border border-slate-200 rounded-lg shadow-sm p-5 space-y-4">
+      <div class="border-b border-slate-100 pb-3">
+        <h3 class="text-sm font-bold text-slate-800 uppercase tracking-wide">Catálogo de carreras</h3>
+        <p class="text-[11px] text-slate-500 mt-1">
+          Estas carreras alimentan los formularios de estudiantes, las carreras cubiertas de los convenios y el alcance de los coordinadores — ya no se escriben a mano.
+        </p>
+      </div>
+      <form (ngSubmit)="agregarCarrera()" class="flex gap-2">
+        <input [(ngModel)]="nuevaCarrera" name="nuevaCarrera" placeholder="Nombre de la carrera, p. ej. Ingeniería en Software"
+          class="flex-1 px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs outline-none focus:border-unibe-blue" />
+        <button type="submit" [disabled]="guardandoCarrera()"
+          class="px-4 py-2 bg-unibe-blue hover:bg-unibe-blue-hover disabled:bg-slate-300 text-white text-xs font-bold rounded-lg shadow transition-all">
+          Agregar
+        </button>
+      </form>
+      <div class="flex flex-wrap gap-2">
+        @for (carrera of carreras(); track carrera.id) {
+          <div class="flex items-center gap-2 px-3 py-1.5 border rounded-lg text-[11px] font-semibold"
+               [class]="carrera.activo !== false ? 'bg-slate-50 border-slate-200 text-slate-700' : 'bg-slate-100 border-slate-200 text-slate-400 line-through'">
+            {{ carrera.nombre }}
+            <button type="button" (click)="toggleCarreraActiva(carrera)" class="text-[9px] font-bold uppercase text-unibe-blue hover:underline">
+              {{ carrera.activo !== false ? 'Desactivar' : 'Activar' }}
+            </button>
+            <button type="button" (click)="eliminarCarrera(carrera)" class="text-[9px] font-bold uppercase text-red-500 hover:underline">Eliminar</button>
+          </div>
+        } @empty {
+          <span class="text-[11px] text-slate-400">Aún no hay carreras. Aplica primero fase27_catalogo_carreras.sql en Supabase y agrega aquí las que falten.</span>
+        }
+      </div>
+    </div>
+  }
+</div>

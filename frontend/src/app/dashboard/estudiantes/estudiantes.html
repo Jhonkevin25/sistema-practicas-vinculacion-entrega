@@ -1,0 +1,440 @@
+<div class="space-y-6">
+  <!-- Section Header -->
+  <div class="flex justify-between items-center bg-white p-5 border border-slate-200 rounded-xl shadow-sm">
+    <div>
+      <h2 class="text-base font-bold text-unibe-blue uppercase tracking-wide">Gestión de Estudiantes</h2>
+      <p class="text-xs text-slate-500 font-medium">Asocia usuarios con matrícula, carrera, semestre actual y periodo institucional.</p>
+    </div>
+    @if (esAdmin) {
+      <button
+        (click)="openCreateModal()"
+        class="px-4 py-2.5 bg-unibe-blue hover:bg-unibe-blue-hover text-white text-xs font-bold rounded-lg transition-all flex items-center gap-2 hover:shadow active:scale-[0.98]"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-4 h-4">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+        </svg>
+        <span>Nuevo Estudiante</span>
+      </button>
+    }
+  </div>
+
+  <!-- Loading State -->
+  @if (loading()) {
+    <div class="flex justify-center items-center py-20 bg-white border border-slate-200 rounded-xl shadow-sm">
+      <svg class="animate-spin h-8 w-8 text-unibe-blue" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+      </svg>
+    </div>
+  } @else {
+    <!-- Filtros del listado (resueltos en el backend, con alcance) -->
+    <div class="bg-white border border-slate-200 rounded-xl shadow-sm p-4 flex flex-wrap items-end gap-3 text-xs">
+      <label class="flex-1 min-w-52">
+        <span class="mb-1.5 block text-[10px] font-bold uppercase text-slate-500">Buscar</span>
+        <input type="text" name="filtroTextoEstudiantes" [(ngModel)]="filtroTexto" (ngModelChange)="buscarConRetardo()" placeholder="Nombre, correo o matrícula…" class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 outline-none focus:border-unibe-blue" />
+      </label>
+      <label class="min-w-52">
+        <span class="mb-1.5 block text-[10px] font-bold uppercase text-slate-500">Carrera</span>
+        <select name="filtroCarreraEstudiantes" [(ngModel)]="filtroCarrera" (ngModelChange)="aplicarFiltros()" class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 outline-none focus:border-unibe-blue">
+          <option value="TODOS">Todas</option>
+          @for (carrera of carrerasCatalogo(); track carrera.id) {
+            <option [value]="carrera.nombre">{{ carrera.nombre }}</option>
+          }
+        </select>
+      </label>
+      <label class="min-w-32">
+        <span class="mb-1.5 block text-[10px] font-bold uppercase text-slate-500">Semestre</span>
+        <input type="number" min="1" max="12" name="filtroSemestreEstudiantes" [(ngModel)]="filtroSemestre" (ngModelChange)="buscarConRetardo()" placeholder="Todos" class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 font-mono outline-none focus:border-unibe-blue" />
+      </label>
+    </div>
+
+    <!-- Table View -->
+    <div class="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
+      <div class="overflow-x-auto">
+        <table class="w-full text-left border-collapse text-xs">
+          <thead>
+            <tr class="border-b border-slate-200 text-slate-400 font-bold uppercase bg-slate-50">
+              <th class="p-4">Matrícula</th>
+              <th class="p-4">Nombre Completo</th>
+              <th class="p-4">Carrera</th>
+              <th class="p-4 text-center">Semestre</th>
+              <th class="p-4">Periodo</th>
+              <th class="p-4 text-right">Acciones</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-100 text-slate-700">
+            @for (est of estudiantes(); track est.id) {
+              <tr class="hover:bg-slate-50/50 transition-all">
+                <td class="p-4 font-mono text-slate-600 font-bold">{{ est.matricula }}</td>
+                <td class="p-4 text-slate-850 font-bold">{{ est.usuario.nombre }} {{ est.usuario.apellido }}</td>
+                <td class="p-4 text-slate-500 font-semibold">{{ est.carrera }}</td>
+                <td class="p-4 text-center font-mono font-bold text-slate-750">{{ est.semestre }}° Semestre</td>
+                <td class="p-4 text-slate-500">{{ est.periodoAcademico }}</td>
+                <td class="p-4 text-right space-x-2">
+                  <button
+                    (click)="openEditModal(est)"
+                    [attr.aria-label]="'Editar estudiante ' + est.matricula"
+                    class="p-2 text-slate-400 hover:text-unibe-blue hover:bg-slate-100 rounded-lg transition-all"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L6.83 20.013a4.5 4.5 0 0 1-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 0 1 1.13-1.897L16.863 4.487Zm0 0L19.5 7.125" />
+                    </svg>
+                  </button>
+                  @if (esAdmin) {
+                    <button
+                      (click)="est.id && deleteEstudiante(est.id)"
+                      [attr.aria-label]="'Eliminar estudiante ' + est.matricula"
+                      class="p-2 text-slate-400 hover:text-red-600 hover:bg-slate-100 rounded-lg transition-all"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
+                      </svg>
+                    </button>
+                  }
+                </td>
+              </tr>
+            } @empty {
+              <tr>
+                <td colspan="6" class="p-10 text-center text-slate-400 font-medium">
+                  No hay estudiantes que coincidan con los filtros actuales.
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+      <app-paginador
+        [pagina]="pagina()"
+        [totalPaginas]="totalPaginas()"
+        [totalElementos]="totalElementos()"
+        [tamano]="tamanoPagina"
+        [cargando]="isRefreshing()"
+        (cambiar)="cambiarPagina($event)"
+      />
+    </div>
+
+    <div class="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
+      <div class="p-5 border-b border-slate-200 bg-slate-50 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <div>
+          <h3 class="text-sm font-bold text-unibe-blue uppercase tracking-wide">Notas Académicas para Meritocracia</h3>
+          <p class="text-xs text-slate-500 font-medium">MVP manual compatible con una futura integración CSV/API de la base institucional de la universidad.</p>
+        </div>
+        <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
+          <input type="search" [(ngModel)]="filtroNotasTexto" name="filtroNotasTexto"
+                 placeholder="Buscar estudiante (nombre, matrícula, correo)…"
+                 class="px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs font-medium text-slate-700 outline-none focus:border-unibe-blue sm:w-64" />
+          <select [ngModel]="filtroNotasPeriodo()" (ngModelChange)="filtroNotasPeriodo.set($event)" class="px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs font-bold text-slate-700 outline-none focus:border-unibe-blue">
+            <option value="TODOS">Todos los periodos</option>
+            @for (periodo of periodosNotas(); track periodo) {
+              <option [value]="periodo">{{ periodo }}</option>
+            }
+          </select>
+          <select [ngModel]="filtroNotas()" (ngModelChange)="filtroNotas.set($event)" class="px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs font-bold text-slate-700 outline-none focus:border-unibe-blue">
+            <option value="PENDIENTE">Pendientes</option>
+            <option value="VERIFICADO">Verificadas</option>
+            <option value="RECHAZADO">Rechazadas</option>
+            <option value="TODOS">Todas</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="overflow-x-auto">
+        <table class="w-full min-w-[900px] text-left border-collapse text-xs">
+          <thead>
+            <tr class="border-b border-slate-200 text-slate-400 font-bold uppercase bg-white">
+              <th class="p-4">Estudiante</th>
+              <th class="p-4">Semestre / Periodo</th>
+              <th class="p-4 text-center">Promedio</th>
+              <th class="p-4">Fuente</th>
+              <th class="p-4">Estado</th>
+              <th class="p-4">Observación</th>
+              <th class="p-4 text-right">Acciones</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-100 text-slate-700">
+            @for (nota of notasFiltradas(); track nota.id) {
+              <tr class="hover:bg-slate-50/50 transition-all">
+                <td class="p-4">
+                  <div class="font-bold text-slate-800">{{ nota.estudiante.usuario.nombre }} {{ nota.estudiante.usuario.apellido }}</div>
+                  <div class="text-[10px] text-slate-400 font-mono">{{ nota.emailInstitucional || nota.estudiante.usuario.email }}</div>
+                  <div class="text-[10px] text-slate-500">{{ nota.estudiante.carrera }}</div>
+                </td>
+                <td class="p-4">
+                  <div class="font-mono font-bold text-slate-700">{{ nota.semestre }}° semestre</div>
+                  <div class="text-[10px] text-slate-400">{{ nota.periodoAcademico }}</div>
+                </td>
+                <td class="p-4 text-center font-mono font-bold text-unibe-blue text-sm">{{ nota.promedio | number:'1.2-2' }}</td>
+                <td class="p-4">
+                  <span class="px-2 py-0.5 bg-slate-100 border border-slate-200 text-slate-600 rounded-full text-[10px] font-bold uppercase">
+                    {{ nota.fuente || 'MANUAL' }}
+                  </span>
+                  @if (nota.externalId) {
+                    <div class="mt-1 text-[10px] text-slate-400 font-mono">{{ nota.externalId }}</div>
+                  }
+                </td>
+                <td class="p-4">
+                  <span [class]="nota.estado === 'VERIFICADO' ? 'bg-green-50 border-green-200 text-green-700' : (nota.estado === 'RECHAZADO' ? 'bg-red-50 border-red-200 text-red-700' : 'bg-amber-50 border-amber-200 text-amber-700')" class="px-2.5 py-0.5 border rounded-full text-[10px] font-bold uppercase">
+                    {{ nota.estado }}
+                  </span>
+                </td>
+                <td class="p-4">
+                  <input [(ngModel)]="nota.observaciones" class="w-full px-2 py-1.5 bg-slate-50 border border-slate-200 rounded-lg outline-none focus:border-unibe-blue text-[11px]" placeholder="Observación si se rechaza" />
+                </td>
+                <td class="p-4 text-right space-x-2">
+                  <button (click)="verificarNota(nota)" [disabled]="nota.estado === 'VERIFICADO'" class="px-3 py-1.5 bg-green-600 disabled:bg-slate-200 disabled:text-slate-400 text-white rounded-lg font-bold text-[10px]">
+                    Verificar
+                  </button>
+                  <button (click)="rechazarNota(nota)" [disabled]="nota.estado === 'RECHAZADO'" class="px-3 py-1.5 bg-slate-100 hover:bg-red-50 hover:text-red-700 disabled:text-slate-400 border border-slate-200 rounded-lg font-bold text-[10px]">
+                    Rechazar
+                  </button>
+                </td>
+              </tr>
+            } @empty {
+              <tr>
+                <td colspan="7" class="p-8 text-center text-slate-400 font-medium">No hay notas académicas con el filtro seleccionado.</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
+      <div class="p-5 border-b border-slate-200 bg-slate-50">
+        <h3 class="text-sm font-bold text-unibe-blue uppercase tracking-wide">Documentos Estándar por Proceso</h3>
+        <p class="text-xs text-slate-500 font-medium mt-1">Coordinación puede pedir documentos por prácticas o vinculación. La carta de aceptación queda como opción posterior a la asignación y puede marcarse obligatoria por carrera.</p>
+      </div>
+
+      <div class="grid grid-cols-1 xl:grid-cols-[380px_1fr] gap-6 p-5">
+        <form (ngSubmit)="saveDocumentoRequerido()" class="space-y-3 text-xs">
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block font-bold text-slate-700 uppercase mb-2">Proceso</label>
+              <select [(ngModel)]="currentDocumentoRequerido.proceso" name="docProceso" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg outline-none focus:border-unibe-blue">
+                <option value="GENERAL">General</option>
+                <option value="PRACTICAS">Prácticas</option>
+                <option value="VINCULACION">Vinculación</option>
+              </select>
+            </div>
+            <div>
+              <label class="block font-bold text-slate-700 uppercase mb-2">Momento</label>
+              <select [(ngModel)]="currentDocumentoRequerido.momento" name="docMomento" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg outline-none focus:border-unibe-blue">
+                <option value="PRE_POSTULACION">Antes de postular</option>
+                <option value="POST_ACEPTACION">Después de aceptar cupo</option>
+                <option value="CIERRE">Cierre</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block font-bold text-slate-700 uppercase mb-2">Tipo</label>
+              <input [(ngModel)]="currentDocumentoRequerido.tipoDocumento" name="docTipo" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg outline-none focus:border-unibe-blue" placeholder="carta_aceptacion" />
+            </div>
+            <div>
+              <label class="block font-bold text-slate-700 uppercase mb-2">Carrera</label>
+              <select [(ngModel)]="currentDocumentoRequerido.carrera" name="docCarrera" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg outline-none focus:border-unibe-blue">
+                <option value="">Todas las carreras</option>
+                @for (carrera of carrerasCatalogo(); track carrera.id) {
+                  <option [value]="carrera.nombre">{{ carrera.nombre }}</option>
+                }
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label class="block font-bold text-slate-700 uppercase mb-2">Nombre</label>
+            <input [(ngModel)]="currentDocumentoRequerido.nombre" name="docNombre" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg outline-none focus:border-unibe-blue" />
+          </div>
+
+          <div>
+            <label class="block font-bold text-slate-700 uppercase mb-2">Descripción</label>
+            <textarea [(ngModel)]="currentDocumentoRequerido.descripcion" name="docDescripcion" rows="2" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg outline-none focus:border-unibe-blue resize-none"></textarea>
+          </div>
+
+          <label class="flex items-center justify-between p-3 bg-slate-50 border border-slate-200 rounded-lg font-bold text-slate-700 uppercase">
+            Obligatorio
+            <input type="checkbox" [(ngModel)]="currentDocumentoRequerido.obligatorio" name="docObligatorio" class="accent-unibe-blue" />
+          </label>
+
+          <button type="submit" class="w-full px-4 py-2 bg-unibe-blue hover:bg-unibe-blue-hover text-white rounded-lg font-bold shadow">
+            Guardar Documento Estándar
+          </button>
+        </form>
+
+        <div class="overflow-x-auto border border-slate-200 rounded-xl">
+          <table class="w-full min-w-[760px] text-left border-collapse text-xs">
+            <thead>
+              <tr class="border-b border-slate-200 text-slate-400 font-bold uppercase bg-slate-50">
+                <th class="p-4">Documento</th>
+                <th class="p-4">Proceso</th>
+                <th class="p-4">Carrera</th>
+                <th class="p-4">Momento</th>
+                <th class="p-4">Regla</th>
+                <th class="p-4 text-right">Acciones</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100 text-slate-700">
+              @for (doc of documentosRequeridos(); track doc.id) {
+                <tr class="hover:bg-slate-50/50">
+                  <td class="p-4">
+                    <div class="font-bold text-slate-800">{{ doc.nombre }}</div>
+                    <div class="text-[10px] text-slate-400 font-mono">{{ doc.tipoDocumento }}</div>
+                  </td>
+                  <td class="p-4 font-bold text-slate-600">{{ doc.proceso }}</td>
+                  <td class="p-4">{{ doc.carrera || 'Todas' }}</td>
+                  <td class="p-4">{{ doc.momento }}</td>
+                  <td class="p-4">
+                    <span [class]="doc.obligatorio ? 'bg-red-50 border-red-200 text-red-700' : 'bg-slate-50 border-slate-200 text-slate-600'" class="px-2 py-0.5 border rounded-full text-[10px] font-bold uppercase">
+                      {{ doc.obligatorio ? 'Obligatorio' : 'Opcional' }}
+                    </span>
+                  </td>
+                  <td class="p-4 text-right space-x-2">
+                    <button (click)="editDocumentoRequerido(doc)" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 rounded-lg font-bold text-[10px]">Editar</button>
+                    <button (click)="deleteDocumentoRequerido(doc)" class="px-3 py-1.5 bg-red-50 text-red-700 border border-red-100 hover:bg-red-100 rounded-lg font-bold text-[10px]">Desactivar</button>
+                  </td>
+                </tr>
+              } @empty {
+                <tr>
+                  <td colspan="6" class="p-8 text-center text-slate-400 font-medium">No hay documentos requeridos configurados.</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- Creation/Editing Modal -->
+  @if (showModal()) {
+    <div class="fixed inset-0 z-50 !mt-0 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 overflow-y-auto">
+      <div class="bg-white border border-slate-200 rounded-2xl w-full max-w-2xl overflow-hidden shadow-2xl relative">
+        <div class="p-5 border-b border-slate-200 bg-slate-50 flex justify-between items-center">
+          <h3 class="text-sm font-bold text-unibe-blue uppercase tracking-wide">{{ isEdit ? 'Editar Registro Académico' : 'Nuevo Registro de Estudiante' }}</h3>
+          <button (click)="closeModal()" class="text-slate-400 hover:text-slate-700 transition-all">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        <form (ngSubmit)="saveEstudiante()" class="p-6 space-y-4 text-xs">
+          <div class="p-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-600 font-medium leading-relaxed">
+            El semestre registrado representa la ubicación académica actual del estudiante. Esto permite contemplar ingresos por traslado: el sistema evaluará la etapa correspondiente sin asumir que todos inician desde primer semestre.
+          </div>
+
+          @if (esAdmin && !isEdit) {
+            <div>
+              <label class="block font-bold text-slate-700 uppercase mb-2">Vincular a Cuenta de Usuario *</label>
+              <select
+                name="usuarioId"
+                [(ngModel)]="selectedUsuarioId"
+                required
+                class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg outline-none focus:border-unibe-blue text-slate-800"
+              >
+                <option [value]="null" disabled>Selecciona un usuario...</option>
+                @for (usr of candidatos(); track usr.id) {
+                  <option [value]="usr.id">{{ usr.nombre }} {{ usr.apellido }} ({{ usr.email }})</option>
+                }
+              </select>
+              <p class="mt-1.5 text-[10px] text-slate-400 font-medium">Solo cuentas activas con rol Estudiante que aún no tienen expediente.</p>
+            </div>
+          } @else {
+            <div class="p-3 bg-slate-50 border border-slate-200 rounded-xl">
+              <span class="block text-[10px] font-bold uppercase text-slate-500 mb-1">Cuenta vinculada</span>
+              <span class="font-bold text-slate-800">{{ currentEstudiante.usuario.nombre }} {{ currentEstudiante.usuario.apellido }}</span>
+              <span class="block text-[10px] text-slate-400 font-mono">{{ currentEstudiante.usuario.email }}</span>
+            </div>
+          }
+
+          @if (esAdmin) {
+            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div>
+                <label class="block font-bold text-slate-700 uppercase mb-2">Matrícula *</label>
+                <input
+                  type="text"
+                  name="matricula"
+                  [(ngModel)]="currentEstudiante.matricula"
+                  required
+                  class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg outline-none focus:border-unibe-blue text-slate-800"
+                  placeholder="MAT-2025-001"
+                />
+              </div>
+              <div>
+                <label class="block font-bold text-slate-700 uppercase mb-2">Carrera *</label>
+                <select
+                  name="carrera"
+                  [(ngModel)]="currentEstudiante.carrera"
+                  required
+                  class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg outline-none focus:border-unibe-blue text-slate-800"
+                >
+                  <option value="" disabled>Selecciona una carrera...</option>
+                  @if (currentEstudiante.carrera && !carreraEnCatalogo(currentEstudiante.carrera)) {
+                    <option [value]="currentEstudiante.carrera">{{ currentEstudiante.carrera }} (fuera del catálogo)</option>
+                  }
+                  @for (carrera of carrerasCatalogo(); track carrera.id) {
+                    <option [value]="carrera.nombre">{{ carrera.nombre }}</option>
+                  }
+                </select>
+              </div>
+            </div>
+          } @else {
+            <!-- Coordinador: la matrícula y la carrera solo las cambia Administración -->
+            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div class="p-3 bg-slate-50 border border-slate-200 rounded-xl">
+                <span class="block text-[10px] font-bold uppercase text-slate-500 mb-1">Matrícula</span>
+                <span class="font-mono font-bold text-slate-800">{{ currentEstudiante.matricula }}</span>
+              </div>
+              <div class="p-3 bg-slate-50 border border-slate-200 rounded-xl">
+                <span class="block text-[10px] font-bold uppercase text-slate-500 mb-1">Carrera</span>
+                <span class="font-bold text-slate-800">{{ currentEstudiante.carrera }}</span>
+              </div>
+            </div>
+          }
+
+          <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div>
+              <label class="block font-bold text-slate-700 uppercase mb-2">Semestre</label>
+              <input
+                type="number"
+                name="semestre"
+                [(ngModel)]="currentEstudiante.semestre"
+                class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg outline-none focus:border-unibe-blue text-slate-800 font-mono"
+                placeholder="5"
+                min="1"
+                max="10"
+              />
+            </div>
+            <div>
+              <label class="block font-bold text-slate-700 uppercase mb-2">Periodo Académico</label>
+              <input
+                type="text"
+                name="periodoAcademico"
+                [(ngModel)]="currentEstudiante.periodoAcademico"
+                class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg outline-none focus:border-unibe-blue text-slate-800"
+                placeholder="2025-2025"
+              />
+            </div>
+          </div>
+
+          <div class="pt-4 border-t border-slate-200 flex justify-end gap-3">
+            <button
+              type="button"
+              (click)="closeModal()"
+              class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg transition-all font-bold border border-slate-200"
+            >
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              class="px-4 py-2 bg-unibe-blue hover:bg-unibe-blue-hover text-white rounded-lg transition-all font-bold shadow active:scale-[0.98]"
+            >
+              Guardar Cambios
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  }
+</div>

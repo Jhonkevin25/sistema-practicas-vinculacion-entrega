@@ -1,0 +1,137 @@
+name: Validacion MVP
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: validacion-mvp-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  calidad-sin-secretos:
+    name: Compilacion y frontend
+    runs-on: ubuntu-latest
+    steps:
+      - name: Obtener codigo
+        uses: actions/checkout@v4
+
+      - name: Configurar Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: gradle
+
+      - name: Compilar backend y pruebas
+        working-directory: backend/sistema-practicas
+        run: |
+          chmod +x gradlew
+          ./gradlew classes testClasses --no-daemon
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Instalar frontend
+        working-directory: frontend
+        run: npm ci
+
+      - name: Pruebas unitarias frontend
+        working-directory: frontend
+        run: npm test -- --watch=false
+
+      - name: Compilar frontend
+        working-directory: frontend
+        run: npm run build
+
+  integracion-con-secretos:
+    name: Backend real y E2E
+    needs: calidad-sin-secretos
+    runs-on: ubuntu-latest
+    env:
+      DB_URL: ${{ secrets.DB_URL }}
+      DB_USERNAME: ${{ secrets.DB_USERNAME }}
+      DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+      APP_JWT_SECRET: ${{ secrets.APP_JWT_SECRET }}
+      APP_CORS_ALLOWED_ORIGINS: http://127.0.0.1:4200,http://localhost:4200
+      APP_MAIL_ENABLED: "false"
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      SUPABASE_STORAGE_BUCKET: documentos
+      E2E_ADMIN_EMAIL: ${{ secrets.E2E_ADMIN_EMAIL }}
+      E2E_ADMIN_PASSWORD: ${{ secrets.E2E_ADMIN_PASSWORD }}
+      E2E_COORDINADOR_EMAIL: ${{ secrets.E2E_COORDINADOR_EMAIL }}
+      E2E_COORDINADOR_PASSWORD: ${{ secrets.E2E_COORDINADOR_PASSWORD }}
+      E2E_TUTOR_EMAIL: ${{ secrets.E2E_TUTOR_EMAIL }}
+      E2E_TUTOR_PASSWORD: ${{ secrets.E2E_TUTOR_PASSWORD }}
+      E2E_ESTUDIANTE_EMAIL: ${{ secrets.E2E_ESTUDIANTE_EMAIL }}
+      E2E_ESTUDIANTE_PASSWORD: ${{ secrets.E2E_ESTUDIANTE_PASSWORD }}
+    steps:
+      - name: Comprobar configuracion de integracion
+        id: prerequisitos
+        shell: bash
+        run: |
+          if [[ -n "$DB_URL" && -n "$DB_USERNAME" && -n "$DB_PASSWORD" && -n "$APP_JWT_SECRET" ]]; then
+            echo "disponible=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "disponible=false" >> "$GITHUB_OUTPUT"
+            echo "Integracion omitida: configura los secretos DB_* y APP_JWT_SECRET."
+          fi
+
+      - name: Obtener codigo
+        if: steps.prerequisitos.outputs.disponible == 'true'
+        uses: actions/checkout@v4
+
+      - name: Configurar Java
+        if: steps.prerequisitos.outputs.disponible == 'true'
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: gradle
+
+      - name: Ejecutar pruebas backend con Supabase
+        if: steps.prerequisitos.outputs.disponible == 'true'
+        working-directory: backend/sistema-practicas
+        run: |
+          chmod +x gradlew
+          ./gradlew test --no-daemon
+
+      - name: Configurar Node.js
+        if: steps.prerequisitos.outputs.disponible == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Instalar frontend y Chromium
+        if: steps.prerequisitos.outputs.disponible == 'true'
+        working-directory: frontend
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+
+      - name: Ejecutar pruebas E2E
+        if: steps.prerequisitos.outputs.disponible == 'true'
+        working-directory: frontend
+        run: npm run e2e
+
+      - name: Conservar evidencias de fallos E2E
+        if: always() && steps.prerequisitos.outputs.disponible == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: evidencias-playwright
+          path: |
+            frontend/playwright-report/
+            frontend/test-results/
+          if-no-files-found: ignore
+          retention-days: 7

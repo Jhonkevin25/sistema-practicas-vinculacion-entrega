@@ -1,0 +1,195 @@
+<section class="space-y-5" aria-labelledby="documentos-revision-title">
+  <div class="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+    <div>
+      <h3 id="documentos-revision-title" class="text-sm font-bold uppercase text-slate-800">Revisión documental</h3>
+      <p class="mt-1 text-xs text-slate-500">Cada estudiante reúne sus documentos en un solo expediente de revisión.</p>
+    </div>
+    <p class="text-xs font-semibold text-slate-500">
+      {{ grupos().length }} {{ grupos().length === 1 ? 'estudiante' : 'estudiantes' }}
+      · {{ documentos().length }} {{ documentos().length === 1 ? 'documento' : 'documentos' }}
+    </p>
+  </div>
+
+  <div class="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
+    <label class="block text-xs font-bold text-slate-600 xl:col-span-2">
+      <span class="mb-1.5 block">Buscar estudiante</span>
+      <input
+        type="search"
+        [ngModel]="busqueda()"
+        (ngModelChange)="busqueda.set($event)"
+        placeholder="Nombre, correo o carrera..."
+        class="min-h-11 w-full rounded-lg border border-slate-300 bg-white px-3 outline-none focus:border-unibe-blue focus-visible:ring-2 focus-visible:ring-unibe-blue/20"
+      />
+    </label>
+    <label class="block text-xs font-bold text-slate-600">
+      <span class="mb-1.5 block">Proceso</span>
+      <select [ngModel]="proceso()" (ngModelChange)="cambiarFiltro('proceso', $event)" class="min-h-11 w-full rounded-lg border border-slate-300 bg-white px-3">
+        <option value="TODOS">Todos</option>
+        <option value="PRACTICAS">Prácticas</option>
+        <option value="VINCULACION">Vinculación</option>
+        <option value="GENERAL">General</option>
+      </select>
+    </label>
+    <label class="block text-xs font-bold text-slate-600">
+      <span class="mb-1.5 block">Estado</span>
+      <select [ngModel]="estado()" (ngModelChange)="cambiarFiltro('estado', $event)" class="min-h-11 w-full rounded-lg border border-slate-300 bg-white px-3">
+        <option value="TODOS">Todos</option>
+        <option value="cargado">Pendiente de revisión</option>
+        <option value="aprobado">Aprobado</option>
+        <option value="requiere_correccion">Requiere corrección</option>
+      </select>
+    </label>
+    <label class="block text-xs font-bold text-slate-600 xl:col-span-3">
+      <span class="mb-1.5 block">Carrera</span>
+      <select [ngModel]="carrera()" (ngModelChange)="cambiarFiltro('carrera', $event)" class="min-h-11 w-full rounded-lg border border-slate-300 bg-white px-3">
+        <option value="TODOS">Todas</option>
+        @for (item of carreras(); track item) {
+          <option [value]="item">{{ item }}</option>
+        }
+      </select>
+    </label>
+    <button
+      type="button"
+      (click)="actualizar.emit()"
+      [disabled]="cargando()"
+      class="flex min-h-11 items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-4 text-xs font-bold text-slate-700 transition-colors hover:bg-slate-50 disabled:cursor-wait disabled:opacity-70"
+    >
+      @if (cargando()) {
+        <span class="h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-r-transparent" aria-hidden="true"></span>
+        Actualizando…
+      } @else {
+        Actualizar
+      }
+    </button>
+  </div>
+
+  @if (cargando() && documentos().length === 0) {
+    <div class="flex min-h-48 items-center justify-center gap-3 rounded-lg border border-slate-200 bg-slate-50 text-sm font-semibold text-slate-600" role="status">
+      <span class="h-5 w-5 animate-spin rounded-full border-2 border-unibe-blue border-r-transparent" aria-hidden="true"></span>
+      Cargando expedientes documentales…
+    </div>
+  } @else {
+    <div class="overflow-hidden rounded-lg border border-slate-200 bg-white">
+      @for (grupo of grupos(); track grupo.clave) {
+        <article class="border-b border-slate-200 last:border-b-0" [attr.data-estudiante]="grupo.clave">
+          <button
+            type="button"
+            (click)="alternarGrupo(grupo.clave)"
+            [attr.aria-expanded]="grupoExpandido(grupo.clave)"
+            [attr.aria-controls]="'documentos-' + grupo.clave"
+            class="group grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-4 px-4 py-4 text-left transition-colors hover:bg-slate-50 sm:grid-cols-[minmax(0,1.4fr)_minmax(8rem,.7fr)_auto]"
+          >
+            <span class="min-w-0">
+              <strong class="block truncate text-sm text-slate-900">{{ grupo.nombre }}</strong>
+              <span class="mt-0.5 block truncate text-xs text-slate-500">{{ grupo.email || 'Sin correo registrado' }}</span>
+            </span>
+            <span class="hidden text-xs font-semibold text-slate-600 sm:block">{{ grupo.carrera }}</span>
+            <span class="flex items-center justify-end gap-2">
+              @if (grupo.pendientes > 0) {
+                <span class="rounded border border-amber-200 bg-amber-50 px-2 py-1 text-[10px] font-bold text-amber-800">{{ grupo.pendientes }} pendientes</span>
+              }
+              @if (grupo.aprobados > 0) {
+                <span class="hidden rounded border border-green-200 bg-green-50 px-2 py-1 text-[10px] font-bold text-green-700 sm:inline">{{ grupo.aprobados }} aprobados</span>
+              }
+              <span class="flex min-h-9 min-w-36 items-center justify-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-3 text-[10px] font-bold text-unibe-blue transition-colors group-hover:border-blue-300 group-hover:bg-blue-100 sm:min-w-44">
+                <span class="hidden sm:inline">
+                  {{ grupoExpandido(grupo.clave) ? 'Ocultar documentos' : 'Revisar ' + grupo.documentos.length + (grupo.documentos.length === 1 ? ' documento' : ' documentos') }}
+                </span>
+                <span class="sm:hidden">{{ grupoExpandido(grupo.clave) ? 'Ocultar' : 'Revisar ' + grupo.documentos.length }}</span>
+                <span
+                  aria-hidden="true"
+                  class="h-2 w-2 shrink-0 border-b-2 border-r-2 border-current transition-transform duration-200"
+                  [style.transform]="grupoExpandido(grupo.clave) ? 'rotate(225deg)' : 'rotate(45deg)'"
+                ></span>
+              </span>
+            </span>
+          </button>
+
+          @if (grupoExpandido(grupo.clave)) {
+            <div [id]="'documentos-' + grupo.clave" class="border-t border-slate-200 bg-slate-50/60 px-3 py-3 sm:px-4">
+              <div class="space-y-3">
+                @for (doc of grupo.documentos; track doc.id) {
+                  <section class="rounded-lg border border-slate-200 bg-white p-4" [attr.aria-label]="tipoDocumentoTexto(doc.tipoDocumento)">
+                    <div class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                      <div class="min-w-0">
+                        <div class="flex flex-wrap items-center gap-2">
+                          <h4 class="text-sm font-bold text-slate-800">{{ tipoDocumentoTexto(doc.tipoDocumento) }}</h4>
+                          <span class="rounded border px-2 py-1 text-[10px] font-bold" [class]="claseEstado(doc.estado)">{{ etiquetaEstado(doc.estado) }}</span>
+                        </div>
+                        <p class="mt-1 text-[11px] text-slate-500">{{ doc.proceso }} · {{ doc.carrera || doc.estudiante?.carrera }}</p>
+                        @if (doc.observacion) {
+                          <p class="mt-2 text-xs text-slate-600"><strong>Observación anterior:</strong> {{ doc.observacion }}</p>
+                        }
+                      </div>
+
+                      <div class="flex flex-wrap gap-2">
+                        <button
+                          type="button"
+                          (click)="ver.emit(doc)"
+                          [disabled]="documentoOcupado(doc)"
+                          class="flex min-h-10 min-w-28 items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-3 text-xs font-bold text-slate-700 hover:bg-slate-50 disabled:cursor-wait disabled:opacity-60"
+                        >
+                          @if (estaProcesando(doc, 'ver')) {
+                            <span class="h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-r-transparent" aria-hidden="true"></span>
+                            Abriendo…
+                          } @else {
+                            Ver archivo
+                          }
+                        </button>
+                        <button
+                          type="button"
+                          (click)="aprobar.emit(doc)"
+                          [disabled]="documentoOcupado(doc) || doc.estado === 'aprobado'"
+                          class="flex min-h-10 min-w-28 items-center justify-center gap-2 rounded-lg bg-green-700 px-3 text-xs font-bold text-white hover:bg-green-800 disabled:cursor-not-allowed disabled:opacity-55"
+                        >
+                          @if (estaProcesando(doc, 'aprobar')) {
+                            <span class="h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-r-transparent" aria-hidden="true"></span>
+                            Guardando…
+                          } @else {
+                            Aprobar
+                          }
+                        </button>
+                      </div>
+                    </div>
+
+                    <div class="mt-4 grid gap-2 border-t border-slate-100 pt-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
+                      <label class="block text-xs font-bold text-slate-600" [for]="'observacion-' + doc.id">
+                        <span class="mb-1.5 block">Motivo de corrección</span>
+                        <textarea
+                          [id]="'observacion-' + doc.id"
+                          [ngModel]="observaciones()[doc.id || 0]"
+                          (ngModelChange)="actualizarObservacion(doc.id, $event)"
+                          rows="2"
+                          placeholder="Indica claramente qué debe corregir el estudiante"
+                          class="w-full rounded-lg border border-slate-300 px-3 py-2 font-normal focus-visible:ring-2 focus-visible:ring-unibe-blue"
+                        ></textarea>
+                      </label>
+                      <button
+                        type="button"
+                        (click)="corregir.emit(doc)"
+                        [disabled]="documentoOcupado(doc)"
+                        class="flex min-h-10 min-w-40 items-center justify-center gap-2 rounded-lg border border-red-200 bg-red-50 px-3 text-xs font-bold text-red-700 hover:bg-red-100 disabled:cursor-wait disabled:opacity-60"
+                      >
+                        @if (estaProcesando(doc, 'corregir')) {
+                          <span class="h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-r-transparent" aria-hidden="true"></span>
+                          Enviando…
+                        } @else {
+                          Solicitar corrección
+                        }
+                      </button>
+                    </div>
+                  </section>
+                }
+              </div>
+            </div>
+          }
+        </article>
+        } @empty {
+          <div class="px-6 py-12 text-center">
+            <p class="text-sm font-semibold text-slate-600">No hay estudiantes para revisar.</p>
+            <p class="mt-1 text-xs text-slate-500">Ajusta la búsqueda o los filtros seleccionados.</p>
+          </div>
+        }
+    </div>
+  }
+</section>

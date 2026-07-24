@@ -1,0 +1,133 @@
+<div class="space-y-5">
+  <div class="bg-white p-5 border border-slate-200 rounded-lg shadow-sm flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+    <div>
+      <h2 class="text-base font-bold text-unibe-blue uppercase tracking-wide">Reportes académicos</h2>
+      <p class="text-xs text-slate-500 font-medium mt-1">Asignaciones, capacidad, seguimiento y cierre de expedientes.</p>
+    </div>
+    <button
+      type="button"
+      (click)="exportar()"
+      [disabled]="exportando() || cargando()"
+      class="px-4 py-2.5 bg-unibe-blue hover:bg-unibe-blue-hover disabled:bg-slate-300 text-white text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-2"
+    >
+      @if (exportando()) {
+        <span class="w-4 h-4 rounded-full border-2 border-white/40 border-t-white animate-spin"></span>
+      } @else {
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-4.5-6L12 15m0 0-4.5-4.5M12 15V3" />
+        </svg>
+      }
+      Exportar CSV
+    </button>
+  </div>
+
+  <div class="bg-white border border-slate-200 rounded-lg shadow-sm overflow-hidden">
+    <div class="p-4 border-b border-slate-200 bg-slate-50">
+      <div class="grid grid-cols-2 lg:grid-cols-4 gap-2" role="tablist" aria-label="Tipo de reporte">
+        @for (opcion of ['ASIGNACIONES', 'CUPOS', 'RIESGOS', 'CIERRES']; track opcion) {
+          <button
+            type="button"
+            role="tab"
+            (click)="seleccionarTipo($any(opcion))"
+            [attr.aria-selected]="tipo() === opcion"
+            [class]="tipo() === opcion ? 'bg-white text-unibe-blue border-unibe-blue shadow-sm' : 'bg-transparent text-slate-500 border-transparent hover:bg-white'"
+            class="h-10 px-3 border rounded-md text-[11px] font-bold transition-all"
+          >
+            {{ opcion === 'RIESGOS' ? 'EN RIESGO' : opcion }}
+          </button>
+        }
+      </div>
+    </div>
+
+    <form class="p-4 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-3 items-end" (ngSubmit)="cargar()">
+      <label class="block">
+        <span class="block text-[10px] font-bold uppercase text-slate-500 mb-1.5">Periodo</span>
+        <input type="text" [ngModel]="periodo()" (ngModelChange)="periodo.set($event)" name="periodo" placeholder="2026-1" class="w-full h-10 px-3 border border-slate-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-unibe-blue/20 focus:border-unibe-blue" />
+      </label>
+      <label class="block">
+        <span class="block text-[10px] font-bold uppercase text-slate-500 mb-1.5">Carrera</span>
+        <input type="text" [ngModel]="carrera()" (ngModelChange)="carrera.set($event)" name="carrera" placeholder="Carrera" class="w-full h-10 px-3 border border-slate-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-unibe-blue/20 focus:border-unibe-blue" />
+      </label>
+      <label class="block">
+        <span class="block text-[10px] font-bold uppercase text-slate-500 mb-1.5">Proceso</span>
+        <select [ngModel]="proceso()" (ngModelChange)="proceso.set($event)" name="proceso" class="w-full h-10 px-3 border border-slate-300 rounded-lg bg-white text-xs focus:outline-none focus:ring-2 focus:ring-unibe-blue/20 focus:border-unibe-blue">
+          <option value="TODOS">Todos</option>
+          <option value="PRACTICAS">Prácticas</option>
+          <option value="VINCULACION">Vinculación</option>
+        </select>
+      </label>
+      <label class="block">
+        <span class="block text-[10px] font-bold uppercase text-slate-500 mb-1.5">Entidad</span>
+        <input type="search" [ngModel]="entidad()" (ngModelChange)="entidad.set($event)" name="entidad" placeholder="Empresa, fundación o proyecto" class="w-full h-10 px-3 border border-slate-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-unibe-blue/20 focus:border-unibe-blue" />
+      </label>
+      <div class="flex gap-2">
+        <button type="submit" class="flex-1 h-10 px-4 bg-unibe-blue hover:bg-unibe-blue-hover text-white text-xs font-bold rounded-lg transition-colors">Aplicar</button>
+        <button type="button" (click)="limpiarFiltros()" title="Limpiar filtros" aria-label="Limpiar filtros" class="w-10 h-10 shrink-0 flex items-center justify-center border border-slate-300 text-slate-500 hover:bg-slate-100 rounded-lg">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992V4.356m-1.291 12.019a9 9 0 1 1 .366-10.474L21.015 7.5" /></svg>
+        </button>
+      </div>
+    </form>
+  </div>
+
+  <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+    <div class="bg-white border border-slate-200 rounded-lg p-4"><span class="block text-[10px] font-bold text-slate-400 uppercase">Filas encontradas</span><strong class="text-xl text-slate-800">{{ totalFilas() }}</strong></div>
+    <div class="bg-white border border-blue-200 rounded-lg p-4"><span class="block text-[10px] font-bold text-unibe-blue uppercase">{{ etiquetaPrincipal() }}</span><strong class="text-xl text-unibe-blue">{{ valorPrincipal() }}</strong></div>
+    <div class="bg-white border border-slate-200 rounded-lg p-4"><span class="block text-[10px] font-bold text-slate-500 uppercase">{{ etiquetaSecundaria() }}</span><strong class="text-xl text-slate-800">{{ valorSecundario() }}</strong></div>
+  </div>
+
+  <div class="bg-white border border-slate-200 rounded-lg shadow-sm overflow-hidden">
+    @if (cargando()) {
+      <div class="h-52 flex items-center justify-center gap-3 text-xs font-medium text-slate-500"><span class="w-5 h-5 rounded-full border-2 border-slate-200 border-t-unibe-blue animate-spin"></span>Cargando reporte...</div>
+    } @else if (totalFilas() === 0) {
+      <div class="h-52 flex items-center justify-center text-xs font-medium text-slate-400">No existen resultados con los filtros seleccionados.</div>
+    } @else {
+      <div class="overflow-x-auto max-h-[32rem]">
+        @if (tipo() === 'ASIGNACIONES') {
+          <table class="w-full text-left text-xs">
+            <thead class="sticky top-0 z-10 bg-slate-50 text-[10px] uppercase text-slate-500 border-b border-slate-200"><tr><th class="p-3">Estudiante</th><th class="p-3">Proceso</th><th class="p-3">Carrera</th><th class="p-3">Periodo</th><th class="p-3">Entidad</th><th class="p-3">Estado</th><th class="p-3 text-right">Horas</th></tr></thead>
+            <tbody class="divide-y divide-slate-100">
+              @for (fila of asignaciones(); track fila.proceso + '-' + fila.expedienteId) {
+                <tr class="hover:bg-slate-50"><td class="p-3"><strong class="block text-slate-800">{{ fila.estudiante }}</strong><span class="text-[10px] text-slate-400">{{ fila.matricula }}</span></td><td class="p-3 font-bold text-slate-600">{{ fila.proceso }}</td><td class="p-3">{{ fila.carrera }}</td><td class="p-3">{{ fila.periodo || '—' }}</td><td class="p-3 min-w-52">{{ fila.entidad }}</td><td class="p-3"><span class="px-2 py-1 border rounded text-[10px] font-bold" [class]="claseEstado(fila.estado)">{{ fila.estado }}</span></td><td class="p-3 text-right font-mono">{{ fila.horasCompletadas }}/{{ fila.horasRequeridas }}</td></tr>
+              }
+            </tbody>
+          </table>
+        } @else if (tipo() === 'CUPOS') {
+          <table class="w-full text-left text-xs">
+            <thead class="sticky top-0 z-10 bg-slate-50 text-[10px] uppercase text-slate-500 border-b border-slate-200"><tr><th class="p-3">Entidad</th><th class="p-3">Proceso</th><th class="p-3">Carrera</th><th class="p-3 text-right">Total</th><th class="p-3 text-right">Usados</th><th class="p-3 text-right">Disponibles</th><th class="p-3 min-w-40">Ocupación</th></tr></thead>
+            <tbody class="divide-y divide-slate-100">
+              @for (fila of cupos(); track fila.proceso + '-' + fila.entidad + '-' + fila.carrera) {
+                <tr class="hover:bg-slate-50"><td class="p-3 min-w-60 font-semibold text-slate-800">{{ fila.entidad }}</td><td class="p-3 font-bold text-slate-600">{{ fila.proceso }}</td><td class="p-3">{{ fila.carrera }}</td><td class="p-3 text-right font-mono">{{ fila.cuposTotales }}</td><td class="p-3 text-right font-mono text-unibe-blue font-bold">{{ fila.cuposUsados }}</td><td class="p-3 text-right font-mono">{{ fila.cuposDisponibles }}</td><td class="p-3"><div class="flex items-center gap-2"><div class="h-2 flex-1 bg-slate-100 rounded-full overflow-hidden"><div class="h-full bg-unibe-blue" [style.width.%]="fila.ocupacionPorcentaje"></div></div><span class="w-9 text-right font-mono">{{ fila.ocupacionPorcentaje }}%</span></div></td></tr>
+              }
+            </tbody>
+          </table>
+        } @else if (tipo() === 'RIESGOS') {
+          <table class="w-full text-left text-xs">
+            <thead class="sticky top-0 z-10 bg-slate-50 text-[10px] uppercase text-slate-500 border-b border-slate-200"><tr><th class="p-3">Estudiante</th><th class="p-3">Nivel</th><th class="p-3">Proceso</th><th class="p-3">Entidad</th><th class="p-3 text-right">Sin actividad</th><th class="p-3 text-right">Avance</th><th class="p-3">Motivos</th></tr></thead>
+            <tbody class="divide-y divide-slate-100">
+              @for (fila of riesgos(); track fila.proceso + '-' + fila.expedienteId) {
+                <tr class="hover:bg-slate-50"><td class="p-3"><strong class="block text-slate-800">{{ fila.estudiante }}</strong><span class="text-[10px] text-slate-400">{{ fila.carrera }}</span></td><td class="p-3"><span class="px-2 py-1 border rounded text-[10px] font-bold" [class]="fila.nivel === 'ALTO' ? 'bg-red-50 text-red-700 border-red-200' : 'bg-amber-50 text-amber-700 border-amber-200'">{{ fila.nivel }}</span></td><td class="p-3 font-bold text-slate-600">{{ fila.proceso }}</td><td class="p-3 min-w-52">{{ fila.entidad }}</td><td class="p-3 text-right font-mono">{{ fila.diasSinActividad === null ? '—' : fila.diasSinActividad + ' días' }}</td><td class="p-3 text-right font-mono">{{ fila.avancePorcentaje }}%</td><td class="p-3 min-w-60 text-slate-600">{{ fila.motivos.join(' · ') }}</td></tr>
+              }
+            </tbody>
+          </table>
+        } @else {
+          <table class="w-full text-left text-xs">
+            <thead class="sticky top-0 z-10 bg-slate-50 text-[10px] uppercase text-slate-500 border-b border-slate-200"><tr><th class="p-3">Estudiante</th><th class="p-3">Proceso</th><th class="p-3">Entidad</th><th class="p-3">Estado</th><th class="p-3 text-right">Horas</th><th class="p-3 text-right">Cumplimiento</th><th class="p-3">Cierre formal</th></tr></thead>
+            <tbody class="divide-y divide-slate-100">
+              @for (fila of cierres(); track fila.proceso + '-' + fila.expedienteId) {
+                <tr class="hover:bg-slate-50"><td class="p-3"><strong class="block text-slate-800">{{ fila.estudiante }}</strong><span class="text-[10px] text-slate-400">{{ fila.carrera }}</span></td><td class="p-3 font-bold text-slate-600">{{ fila.proceso }}</td><td class="p-3 min-w-52">{{ fila.entidad }}</td><td class="p-3"><span class="px-2 py-1 border rounded text-[10px] font-bold" [class]="claseEstado(fila.estado)">{{ fila.estado }}</span></td><td class="p-3 text-right font-mono">{{ fila.horasCompletadas }}/{{ fila.horasRequeridas }}</td><td class="p-3 text-right font-mono font-bold" [class.text-green-700]="fila.cumpleHoras" [class.text-red-700]="!fila.cumpleHoras">{{ fila.cumplimientoPorcentaje }}%</td><td class="p-3"><span class="text-[10px] font-bold" [class.text-green-700]="fila.cerrado" [class.text-slate-400]="!fila.cerrado">{{ fila.cerrado ? 'CERRADO' : 'PENDIENTE' }}</span></td></tr>
+              }
+            </tbody>
+          </table>
+        }
+      </div>
+      
+      <app-paginador 
+        [pagina]="pagina()" 
+        [tamano]="tamano()" 
+        [totalElementos]="totalElementos()" 
+        [totalPaginas]="totalPaginas()"
+        (cambiar)="cambioPagina($event)">
+      </app-paginador>
+    }
+  </div>
+</div>

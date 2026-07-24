@@ -1,0 +1,21 @@
+package ec.edu.unibe.sistema_practicas.asistencia;
+
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+
+import java.util.Collection;
+import java.util.List;
+import java.time.LocalDate;
+
+@Repository
+public interface AsistenciaRepository extends JpaRepository<Asistencia, Integer> {
+    List<Asistencia> findByEstudianteId(Integer estudianteId);
+    List<Asistencia> findByPracticaId(Integer practicaId);
+    List<Asistencia> findByVinculacionId(Integer vinculacionId);
+    List<Asistencia> findByPracticaTutorId(Integer tutorId);
+    List<Asistencia> findByVinculacionTutorId(Integer tutorId);
+    List<Asistencia> findByPracticaEstudianteCarreraIn(Collection<String> carreras);
+    List<Asistencia> findByVinculacionEstudianteCarreraIn(Collection<String> carreras);
+    boolean existsByPracticaIdAndFecha(Integer practicaId, LocalDate fecha);
+    boolean existsByVinculacionIdAndFecha(Integer vinculacionId, LocalDate fecha);
+}

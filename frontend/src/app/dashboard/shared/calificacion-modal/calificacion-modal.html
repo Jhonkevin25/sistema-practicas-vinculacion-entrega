@@ -1,0 +1,88 @@
+<div class="fixed inset-0 z-50 flex items-end justify-center bg-slate-900/60 p-0 backdrop-blur-sm sm:items-center sm:p-4 overflow-y-auto" role="presentation">
+  <section
+    class="max-h-[92vh] w-full overflow-y-auto rounded-t-lg border border-slate-200 bg-white shadow-2xl sm:max-w-md sm:rounded-lg"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="titulo-calificacion"
+  >
+    <header class="flex items-center justify-between gap-4 border-b border-slate-200 bg-slate-50 px-4 py-4 sm:px-5">
+      <div>
+        <p class="text-[10px] font-bold uppercase text-slate-500">{{ proceso() }}</p>
+        <h2 id="titulo-calificacion" class="text-sm font-bold text-slate-800">Calificar parcial {{ parcial() }}</h2>
+      </div>
+      <button
+        type="button"
+        (click)="cerrar.emit()"
+        class="grid min-h-11 min-w-11 place-items-center rounded-md text-xl text-slate-500 hover:bg-slate-200 hover:text-slate-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-unibe-blue"
+        aria-label="Cerrar calificación"
+        title="Cerrar"
+      >
+        <span aria-hidden="true">&times;</span>
+      </button>
+    </header>
+
+    <form (ngSubmit)="guardar.emit()" class="space-y-5 p-4 sm:p-6">
+      <div class="rounded-md border border-slate-200 bg-slate-50 p-3">
+        <span class="block text-[10px] font-bold uppercase text-slate-500">Estudiante</span>
+        <strong class="mt-1 block text-sm text-slate-800">{{ estudiante() }}</strong>
+      </div>
+
+      @if (rol() === 'TUTOR') {
+        @if (notaCoordinacion() > 0) {
+          <p class="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-[11px] text-slate-600">
+            Nota de coordinación ya registrada: <strong class="font-mono">{{ notaCoordinacion() | number:'1.2-2' }}</strong>
+          </p>
+        }
+        <div>
+          <label for="nota-tutor" class="mb-2 block text-xs font-bold text-slate-700">Nota del tutor, de 0 a 10</label>
+          <input
+            id="nota-tutor"
+            type="number"
+            [ngModel]="notaTutor()"
+            (ngModelChange)="notaTutorChange.emit($event)"
+            name="notaTutor"
+            required
+            min="0"
+            max="10"
+            step="0.01"
+            inputmode="decimal"
+            autofocus
+            class="min-h-11 w-full rounded-md border border-slate-300 bg-white px-3 py-2 font-mono font-bold text-slate-800 outline-none focus:border-unibe-blue focus:ring-2 focus:ring-blue-100"
+          />
+        </div>
+      } @else {
+        @if (notaTutor() > 0) {
+          <p class="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-[11px] text-slate-600">
+            Nota del tutor ya registrada: <strong class="font-mono">{{ notaTutor() | number:'1.2-2' }}</strong>
+          </p>
+        }
+        <div>
+          <label for="nota-coordinacion" class="mb-2 block text-xs font-bold text-slate-700">Nota de coordinación, de 0 a 10</label>
+          <input
+            id="nota-coordinacion"
+            type="number"
+            [ngModel]="notaCoordinacion()"
+            (ngModelChange)="notaCoordinacionChange.emit($event)"
+            name="notaCoordinacion"
+            required
+            min="0"
+            max="10"
+            step="0.01"
+            inputmode="decimal"
+            autofocus
+            class="min-h-11 w-full rounded-md border border-slate-300 bg-white px-3 py-2 font-mono font-bold text-slate-800 outline-none focus:border-unibe-blue focus:ring-2 focus:ring-blue-100"
+          />
+        </div>
+      }
+
+      <footer class="flex flex-col-reverse gap-2 border-t border-slate-200 pt-4 sm:flex-row sm:justify-end">
+        <button type="button" (click)="cerrar.emit()" [disabled]="guardando()" class="min-h-11 rounded-md border border-slate-300 bg-white px-4 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 disabled:opacity-60 disabled:cursor-not-allowed">
+          Cancelar
+        </button>
+        <button type="submit" [disabled]="guardando()" class="min-h-11 rounded-md bg-unibe-blue px-4 py-2 text-xs font-bold text-white hover:bg-blue-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-unibe-blue disabled:opacity-60 disabled:cursor-not-allowed">
+          {{ guardando() ? 'Guardando…' : 'Guardar calificación' }}
+        </button>
+      </footer>
+    </form>
+  </section>
+</div>

@@ -1,0 +1,130 @@
+<div class="fixed inset-0 z-50 !mt-0 flex items-center justify-center bg-slate-950/65 backdrop-blur-sm p-2 sm:p-4 overflow-y-auto">
+  <section role="dialog" aria-modal="true" aria-labelledby="titulo-proyecto" class="flex max-h-[calc(100dvh-1rem)] w-full max-w-3xl flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-2xl sm:max-h-[calc(100dvh-2rem)]">
+    <header class="flex shrink-0 items-center justify-between border-b border-slate-200 bg-slate-50 p-4 sm:p-5">
+      <div>
+        <h3 id="titulo-proyecto" class="text-sm font-bold uppercase text-unibe-blue">{{ esEdicion() ? 'Editar Proyecto' : 'Nuevo Proyecto de Vinculación' }}</h3>
+        <p class="mt-1 text-[10px] text-slate-500">Registra las condiciones académicas aprobadas para el proyecto.</p>
+      </div>
+      <button type="button" (click)="cerrar.emit()" aria-label="Cerrar formulario de proyecto" class="flex h-10 w-10 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-200">
+        <span aria-hidden="true" class="text-lg">×</span>
+      </button>
+    </header>
+
+    @if (cargando()) {
+      <p class="p-10 text-center text-xs font-medium text-slate-400">Cargando catálogos del proyecto…</p>
+    } @else {
+      <form (ngSubmit)="saveProyecto()" class="flex min-h-0 flex-1 flex-col text-xs">
+        <div class="min-h-0 flex-1 space-y-5 overflow-y-auto p-4 sm:p-6">
+          <div class="grid grid-cols-1 gap-4 sm:grid-cols-[minmax(0,1fr)_10rem]">
+            <div>
+              <label for="proyecto-fundacion" class="mb-2 block font-bold uppercase text-slate-700">Fundación organizadora *</label>
+              <select id="proyecto-fundacion" name="fundacionId" [(ngModel)]="selectedFundacionId" (ngModelChange)="cambiarFundacionOPeriodoProyecto()" [disabled]="esEdicion()" required class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-slate-800 outline-none focus:border-unibe-blue disabled:cursor-not-allowed disabled:opacity-60">
+                <option [ngValue]="null" disabled>Selecciona una fundación...</option>
+                @for (fund of fundaciones(); track fund.id) {
+                  <option [ngValue]="fund.id">{{ fund.nombre }}</option>
+                }
+              </select>
+            </div>
+            <div>
+              <label for="proyecto-periodo" class="mb-2 block font-bold uppercase text-slate-700">Periodo *</label>
+              <select id="proyecto-periodo" name="periodo" [(ngModel)]="currentProyecto.periodo" (ngModelChange)="cambiarFundacionOPeriodoProyecto()" [disabled]="esEdicion()" required class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 font-mono text-slate-800 outline-none focus:border-unibe-blue disabled:cursor-not-allowed disabled:opacity-60">
+                @for (periodo of periodosConfigurables(); track periodo.id) {
+                  <option [value]="periodo.codigo">{{ periodo.codigo }}</option>
+                }
+              </select>
+            </div>
+          </div>
+
+          @if (selectedFundacionId && ofertaSeleccionada(); as oferta) {
+            <dl class="grid grid-cols-2 border-y border-slate-200 bg-slate-50 sm:grid-cols-4">
+              <div class="p-3"><dt class="text-[9px] font-bold uppercase text-slate-500">Autorizados</dt><dd class="mt-1 font-mono text-base font-bold">{{ oferta.cuposTotales }}</dd></div>
+              <div class="p-3"><dt class="text-[9px] font-bold uppercase text-slate-500">En proyectos</dt><dd class="mt-1 font-mono text-base font-bold text-amber-700">{{ oferta.cuposReservados || 0 }}</dd></div>
+              <div class="p-3"><dt class="text-[9px] font-bold uppercase text-slate-500">Ocupados</dt><dd class="mt-1 font-mono text-base font-bold text-unibe-blue">{{ oferta.cuposOcupados || 0 }}</dd></div>
+              <div class="p-3"><dt class="text-[9px] font-bold uppercase text-slate-500">Libres</dt><dd class="mt-1 font-mono text-base font-bold text-emerald-700">{{ oferta.cuposDisponibles || 0 }}</dd></div>
+            </dl>
+          } @else if (selectedFundacionId) {
+            <p class="border-y border-amber-200 bg-amber-50 px-3 py-3 font-semibold text-amber-800">Configura primero la oferta de cupos de la fundación para este periodo.</p>
+          }
+
+          <div>
+            <label for="proyecto-nombre" class="mb-2 block font-bold uppercase text-slate-700">Nombre del proyecto *</label>
+            <input id="proyecto-nombre" type="text" name="nombre" [(ngModel)]="currentProyecto.nombre" maxlength="250" required class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-slate-800 outline-none focus:border-unibe-blue" />
+          </div>
+          <div>
+            <label for="proyecto-descripcion" class="mb-2 block font-bold uppercase text-slate-700">Descripción *</label>
+            <textarea id="proyecto-descripcion" name="descripcion" [(ngModel)]="currentProyecto.descripcion" rows="4" required class="w-full resize-y rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-slate-800 outline-none focus:border-unibe-blue"></textarea>
+          </div>
+
+          <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <div>
+              <label for="proyecto-horas" class="mb-2 block font-bold uppercase text-slate-700">Horas requeridas *</label>
+              <input id="proyecto-horas" type="number" min="1" name="horasRequeridas" [(ngModel)]="currentProyecto.horasRequeridas" required class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 font-mono outline-none focus:border-unibe-blue" />
+            </div>
+            <div>
+              <label for="proyecto-ciudad" class="mb-2 block font-bold uppercase text-slate-700">Ciudad *</label>
+              <input id="proyecto-ciudad" type="text" maxlength="150" name="ciudad" [(ngModel)]="currentProyecto.ciudad" required class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 outline-none focus:border-unibe-blue" />
+            </div>
+            <div>
+              <label for="proyecto-modalidad" class="mb-2 block font-bold uppercase text-slate-700">Modalidad *</label>
+              <select id="proyecto-modalidad" name="modalidad" [(ngModel)]="currentProyecto.modalidad" required class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 outline-none focus:border-unibe-blue">
+                <option value="PRESENCIAL">Presencial</option>
+                <option value="VIRTUAL">Virtual</option>
+                <option value="HIBRIDA">Híbrida</option>
+              </select>
+            </div>
+          </div>
+
+          @if (ofertaSeleccionada(); as oferta) {
+            <fieldset>
+              <legend class="mb-2 block font-bold uppercase text-slate-700">Carreras participantes *</legend>
+              <div class="max-h-64 overflow-y-auto border-y border-slate-200">
+                @for (carrera of carrerasActivas(); track carrera.id) {
+                  <div class="grid min-h-12 items-center gap-3 border-b border-slate-100 py-2 last:border-b-0" [class]="oferta.distribucion === 'POR_CARRERA' ? 'grid-cols-[1fr_7rem]' : 'grid-cols-1'">
+                    <label class="flex min-h-10 cursor-pointer items-center gap-2 font-semibold text-slate-700">
+                      <input type="checkbox" [checked]="!!participacionProyecto(carrera.id)" (change)="toggleCarreraProyecto(carrera)" class="h-4 w-4 accent-unibe-blue" />
+                      <span>{{ carrera.nombre }}</span>
+                    </label>
+                    @if (oferta.distribucion === 'POR_CARRERA') {
+                      <div>
+                        <input type="number" min="1" [max]="maximoCuposCarrera(carrera) || null" [disabled]="!participacionProyecto(carrera.id)" [ngModel]="participacionProyecto(carrera.id)?.cuposTotales || 1" (ngModelChange)="actualizarCuposProyectoCarrera(carrera, $event)" [name]="'cuposProyectoCarrera' + carrera.id" [attr.aria-label]="'Cupos del proyecto para ' + carrera.nombre" class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 font-mono outline-none focus:border-unibe-blue disabled:opacity-40" />
+                        <span class="mt-1 block text-[9px] text-slate-400">Máx. {{ maximoCuposCarrera(carrera) }}</span>
+                      </div>
+                    }
+                  </div>
+                } @empty {
+                  <p class="py-5 text-center text-slate-400">La oferta no tiene carreras disponibles.</p>
+                }
+              </div>
+            </fieldset>
+
+            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              @if (oferta.distribucion === 'GENERAL') {
+                <div>
+                  <label for="proyecto-cupos" class="mb-2 block font-bold uppercase text-slate-700">Cupos del proyecto *</label>
+                  <input id="proyecto-cupos" type="number" name="cupos" [(ngModel)]="currentProyecto.cuposTotales" min="1" [max]="maximoCuposProyecto() || null" required class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 font-mono outline-none focus:border-unibe-blue" />
+                  <p class="mt-1 text-[10px] text-slate-500">Máximo disponible: {{ maximoCuposProyecto() }}</p>
+                </div>
+              } @else {
+                <div class="border-y border-slate-200 bg-slate-50 p-3">
+                  <span class="block text-[9px] font-bold uppercase text-slate-500">Cupos solicitados</span>
+                  <strong class="mt-1 block font-mono text-base text-unibe-blue">{{ cuposSolicitadosProyecto() }}</strong>
+                </div>
+              }
+              <label class="flex min-h-12 items-center justify-between rounded-lg border border-slate-200 bg-slate-50 px-3 font-bold uppercase text-slate-700">
+                Proyecto activo
+                <input type="checkbox" name="estado" [(ngModel)]="currentProyecto.estado" class="h-4 w-4 accent-unibe-blue" />
+              </label>
+            </div>
+          }
+        </div>
+
+        <footer class="flex shrink-0 flex-col-reverse gap-2 border-t border-slate-200 bg-white p-4 sm:flex-row sm:justify-end sm:px-6">
+          <button type="button" (click)="cerrar.emit()" class="min-h-10 rounded-lg border border-slate-200 bg-slate-100 px-4 font-bold text-slate-700 hover:bg-slate-200">Cancelar</button>
+          <button type="submit" [disabled]="guardando() || !ofertaSeleccionada()" class="min-h-10 rounded-lg bg-unibe-blue px-4 font-bold text-white hover:bg-unibe-blue-hover disabled:cursor-not-allowed disabled:opacity-50">
+            {{ guardando() ? 'Guardando…' : 'Guardar proyecto' }}
+          </button>
+        </footer>
+      </form>
+    }
+  </section>
+</div>

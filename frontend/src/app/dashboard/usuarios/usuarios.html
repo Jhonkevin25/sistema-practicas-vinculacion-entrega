@@ -1,0 +1,380 @@
+<div class="space-y-6">
+  <!-- Section Header -->
+  <div class="flex justify-between items-center bg-white p-5 border border-slate-200 rounded-xl shadow-sm">
+    <div>
+      <h2 class="text-base font-bold text-unibe-blue uppercase tracking-wide">Gestión de Usuarios</h2>
+      <p class="text-xs text-slate-500 font-medium">Administra cuentas con correo institucional, clave inicial y roles del sistema.</p>
+    </div>
+    <button
+      (click)="openCreateModal()"
+      class="px-4 py-2.5 bg-unibe-blue hover:bg-unibe-blue-hover text-white text-xs font-bold rounded-lg transition-all flex items-center gap-2 hover:shadow active:scale-[0.98]"
+    >
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-4 h-4">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+      </svg>
+      <span>Nuevo Usuario</span>
+    </button>
+  </div>
+
+  <!-- Loading State -->
+  @if (loading()) {
+    <div class="flex justify-center items-center py-20 bg-white border border-slate-200 rounded-xl shadow-sm">
+      <svg class="animate-spin h-8 w-8 text-unibe-blue" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+      </svg>
+    </div>
+  } @else {
+    <!-- Filtros del listado (resueltos en el backend) -->
+    <div class="bg-white border border-slate-200 rounded-xl shadow-sm p-4 flex flex-wrap items-end gap-3 text-xs">
+      <label class="flex-1 min-w-52">
+        <span class="mb-1.5 block text-[10px] font-bold uppercase text-slate-500">Buscar</span>
+        <input type="text" name="filtroTextoUsuarios" [(ngModel)]="filtroTexto" (ngModelChange)="buscarConRetardo()" placeholder="Nombre, correo o cédula…" class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 outline-none focus:border-unibe-blue" />
+      </label>
+      <label class="min-w-40">
+        <span class="mb-1.5 block text-[10px] font-bold uppercase text-slate-500">Rol</span>
+        <select name="filtroRolUsuarios" [(ngModel)]="filtroRol" (ngModelChange)="aplicarFiltros()" class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 outline-none focus:border-unibe-blue">
+          <option value="TODOS">Todos</option>
+          @for (rol of availableRoles; track rol.id) {
+            <option [value]="rol.codigo">{{ rol.nombre }}</option>
+          }
+        </select>
+      </label>
+      <label class="min-w-36">
+        <span class="mb-1.5 block text-[10px] font-bold uppercase text-slate-500">Estado</span>
+        <select name="filtroActivoUsuarios" [(ngModel)]="filtroActivo" (ngModelChange)="aplicarFiltros()" class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 outline-none focus:border-unibe-blue">
+          <option value="TODOS">Todos</option>
+          <option value="true">Activos</option>
+          <option value="false">Inactivos</option>
+        </select>
+      </label>
+    </div>
+
+    <!-- Table View -->
+    <div class="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
+      <div class="overflow-x-auto">
+        <table class="w-full text-left border-collapse text-xs">
+          <thead>
+            <tr class="border-b border-slate-200 text-slate-400 font-bold uppercase tracking-wider bg-slate-50">
+              <th class="p-4">Cédula</th>
+              <th class="p-4">Nombre Completo</th>
+              <th class="p-4">Correo</th>
+              <th class="p-4">Rol</th>
+              <th class="p-4">Estado</th>
+              <th class="p-4 text-right">Acciones</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-100 text-slate-700">
+            @for (usuario of usuarios(); track usuario.id) {
+              <tr class="hover:bg-slate-50/50 transition-all">
+                <td class="p-4 font-mono text-slate-600 font-semibold">{{ usuario.cedula }}</td>
+                <td class="p-4 font-bold text-slate-800">{{ usuario.nombre }} {{ usuario.apellido }}</td>
+                <td class="p-4 text-slate-500">{{ usuario.email }}</td>
+                <td class="p-4">
+                  <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-slate-100 border border-slate-200 text-slate-600">
+                    {{ usuario.roles && usuario.roles.length > 0 ? usuario.roles[0].nombre : 'Ninguno' }}
+                  </span>
+                  @if (rolPrincipal(usuario) === 'COORDINADOR') {
+                    <div class="mt-2 max-w-64 text-[10px] font-semibold leading-snug text-slate-500" [title]="detalleAlcance(usuario)">
+                      {{ resumenAlcance(usuario) }}
+                    </div>
+                  }
+                </td>
+                <td class="p-4">
+                  <span
+                    [class]="usuario.activo ? 'bg-green-50 border-green-200 text-green-700' : 'bg-red-50 border-red-200 text-red-700'"
+                    class="inline-flex px-2.5 py-0.5 rounded-full text-[10px] font-bold border select-none"
+                  >
+                    {{ usuario.activo ? 'Activo' : 'Inactivo' }}
+                  </span>
+                </td>
+                <td class="p-4 text-right space-x-2">
+                  @if (rolPrincipal(usuario) === 'COORDINADOR') {
+                    <button
+                      (click)="openAlcanceModal(usuario)"
+                      class="px-2.5 py-1.5 text-[10px] font-bold text-unibe-blue bg-unibe-blue/5 border border-unibe-blue/20 hover:bg-unibe-blue hover:text-white rounded-lg transition-all uppercase"
+                      title="Configurar carreras y tipo de coordinación"
+                    >
+                      Alcance
+                    </button>
+                  }
+                  <button
+                    (click)="openEditModal(usuario)"
+                    aria-label="Editar usuario"
+                    class="p-2 text-slate-400 hover:text-unibe-blue hover:bg-slate-100 rounded-lg transition-all"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L6.83 20.013a4.5 4.5 0 0 1-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 0 1 1.13-1.897L16.863 4.487Zm0 0L19.5 7.125" />
+                    </svg>
+                  </button>
+                  @if (usuario.activo) {
+                    <button
+                      type="button"
+                      (click)="desactivarUsuario(usuario)"
+                      [disabled]="esUsuarioActual(usuario)"
+                      class="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-[10px] font-bold text-red-700 bg-red-50 border border-red-200 hover:bg-red-100 rounded-lg transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                      [title]="esUsuarioActual(usuario) ? 'No puedes desactivar tu propia cuenta' : 'Desactivar cuenta conservando su historial'"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-3.5 h-3.5" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M18.364 5.636a9 9 0 1 1-12.728 0M12 3v9" />
+                      </svg>
+                      Desactivar
+                    </button>
+                  } @else {
+                    <button
+                      type="button"
+                      (click)="reactivarUsuario(usuario)"
+                      class="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-[10px] font-bold text-green-700 bg-green-50 border border-green-200 hover:bg-green-100 rounded-lg transition-all"
+                      title="Reactivar cuenta"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-3.5 h-3.5" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992V4.356M2.985 19.644v-4.992h4.992m12.038-5.304A9 9 0 0 0 5.17 5.17L2.985 7.356m0 7.296A9 9 0 0 0 18.83 18.83l2.185-2.186" />
+                      </svg>
+                      Reactivar
+                    </button>
+                  }
+                </td>
+              </tr>
+            } @empty {
+              <tr>
+                <td colspan="6" class="p-10 text-center text-slate-400 font-medium">
+                  No hay usuarios que coincidan con los filtros actuales.
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+      <app-paginador
+        [pagina]="pagina()"
+        [totalPaginas]="totalPaginas()"
+        [totalElementos]="totalElementos()"
+        [tamano]="tamanoPagina"
+        [cargando]="isRefreshing()"
+        (cambiar)="cambiarPagina($event)"
+      />
+    </div>
+  }
+
+  <!-- Creation/Editing Modal -->
+  @if (showModal()) {
+    <div class="fixed inset-0 z-50 !mt-0 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-2 sm:p-4 animate-fade-in overflow-y-auto">
+      <div class="relative flex max-h-[calc(100dvh-1rem)] w-full max-w-2xl flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-2xl sm:max-h-[calc(100dvh-2rem)]">
+        <div class="p-4 sm:p-5 border-b border-slate-200 bg-slate-50 flex justify-between items-center shrink-0">
+          <h3 class="text-sm font-bold text-unibe-blue uppercase tracking-wide">{{ isEdit ? 'Editar Usuario' : 'Nuevo Usuario' }}</h3>
+          <button type="button" (click)="closeModal()" aria-label="Cerrar formulario de usuario" class="flex h-10 w-10 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-200 hover:text-slate-700 transition-all">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        <form (ngSubmit)="saveUsuario()" class="min-h-0 overflow-y-auto p-4 sm:p-6 space-y-4 text-xs">
+          @if (!isEdit) {
+            <div class="p-3 bg-blue-50 border border-blue-100 rounded-xl text-blue-800 font-medium leading-relaxed">
+              En el MVP el alta es manual. En producción este registro puede sincronizarse con la base institucional de la universidad; la clave inicial se cambia en el primer ingreso.
+            </div>
+          }
+
+          <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div>
+              <label class="block font-bold text-slate-700 uppercase mb-2">Cédula *</label>
+              <input
+                type="text"
+                  name="cedula"
+                  [(ngModel)]="currentUsuario.cedula"
+                  required
+                  maxlength="20"
+                class="w-full px-3 py-2 bg-slate-50 border border-slate-200 focus:border-unibe-blue rounded-lg outline-none transition-all text-slate-800"
+                placeholder="1723456789"
+              />
+            </div>
+            <div>
+              <label class="block font-bold text-slate-700 uppercase mb-2">Correo institucional *</label>
+              <input
+                type="email"
+                name="email"
+                [(ngModel)]="currentUsuario.email"
+                required
+                class="w-full px-3 py-2 bg-slate-50 border border-slate-200 focus:border-unibe-blue rounded-lg outline-none transition-all text-slate-800"
+                placeholder="correo@unibe.edu.ec"
+              />
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div>
+              <label class="block font-bold text-slate-700 uppercase mb-2">Nombre *</label>
+              <input
+                type="text"
+                name="nombre"
+                [(ngModel)]="currentUsuario.nombre"
+                required
+                class="w-full px-3 py-2 bg-slate-50 border border-slate-200 focus:border-unibe-blue rounded-lg outline-none transition-all text-slate-800"
+                placeholder="Juan"
+              />
+            </div>
+            <div>
+              <label class="block font-bold text-slate-700 uppercase mb-2">Apellido *</label>
+              <input
+                type="text"
+                name="apellido"
+                [(ngModel)]="currentUsuario.apellido"
+                required
+                class="w-full px-3 py-2 bg-slate-50 border border-slate-200 focus:border-unibe-blue rounded-lg outline-none transition-all text-slate-800"
+                placeholder="Pérez"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label class="block font-bold text-slate-700 uppercase mb-2">Rol del Sistema *</label>
+            <select
+              name="selectedRoleId"
+              [(ngModel)]="selectedRoleId"
+              required
+              class="w-full px-3 py-2 bg-slate-50 border border-slate-200 focus:border-unibe-blue rounded-lg outline-none transition-all text-slate-800"
+            >
+              <option [value]="null" disabled>Selecciona un rol...</option>
+              @for (rol of availableRoles; track rol.id) {
+                <option [value]="rol.id">{{ rol.nombre }}</option>
+              }
+            </select>
+          </div>
+
+          @if (rolSeleccionadoCodigo() === 'TUTOR') {
+            <div>
+              <label class="block font-bold text-slate-700 uppercase mb-2">Área del tutor *</label>
+              <select
+                name="tutorTipo"
+                [(ngModel)]="currentUsuario.tutorTipo"
+                class="w-full px-3 py-2 bg-slate-50 border border-slate-200 focus:border-unibe-blue rounded-lg outline-none transition-all text-slate-800"
+              >
+                <option value="AMBOS">Prácticas y Vinculación</option>
+                <option value="PRACTICAS">Solo Prácticas</option>
+                <option value="VINCULACION">Solo Vinculación</option>
+              </select>
+              <p class="mt-1 text-[10px] text-slate-400">Define qué secciones ve el tutor en su menú.</p>
+            </div>
+          }
+
+          <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div>
+              <label class="block font-bold text-slate-700 uppercase mb-2">Fuente del usuario</label>
+              <select
+                name="fuente"
+                [(ngModel)]="currentUsuario.fuente"
+                class="w-full px-3 py-2 bg-slate-50 border border-slate-200 focus:border-unibe-blue rounded-lg outline-none transition-all text-slate-800"
+              >
+                <option value="MANUAL">Manual MVP</option>
+                <option value="CSV_UNIVERSIDAD">CSV Universidad</option>
+                <option value="API_UNIVERSIDAD">API Universidad</option>
+              </select>
+            </div>
+            <div>
+              <label class="block font-bold text-slate-700 uppercase mb-2">ID externo</label>
+              <input
+                type="text"
+                name="externalId"
+                [(ngModel)]="currentUsuario.externalId"
+                class="w-full px-3 py-2 bg-slate-50 border border-slate-200 focus:border-unibe-blue rounded-lg outline-none transition-all text-slate-800"
+                placeholder="Código institucional"
+              />
+            </div>
+          </div>
+
+          @if (!isEdit) {
+            <div>
+              <label class="block font-bold text-slate-700 uppercase mb-2">Contraseña Inicial</label>
+              <input
+                type="text"
+                name="passwordHash"
+                [(ngModel)]="currentUsuario.passwordHash"
+                class="w-full px-3 py-2 bg-slate-50 border border-slate-200 focus:border-unibe-blue rounded-lg outline-none transition-all text-slate-800"
+                placeholder="Usuario123#"
+              />
+              <span class="text-[9px] text-slate-400 font-semibold mt-1 block">Se guarda cifrada en backend y el usuario debe cambiarla en su primer ingreso.</span>
+            </div>
+          }
+
+          @if (isEdit) {
+            <div class="p-4 bg-slate-50 border border-slate-200 rounded-lg">
+              <span class="font-bold text-slate-700 uppercase">Estado de cuenta: {{ currentUsuario.activo ? 'Activo' : 'Inactivo' }}</span>
+              <p class="mt-1 text-[10px] text-slate-500">La activación se administra desde la lista para proteger al administrador actual y conservar el historial.</p>
+            </div>
+          }
+
+          <div class="pt-4 border-t border-slate-200 flex justify-end gap-3">
+            <button
+              type="button"
+              (click)="closeModal()"
+              class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg transition-all font-bold border border-slate-200"
+            >
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              [disabled]="guardandoUsuario()"
+              class="px-4 py-2 bg-unibe-blue hover:bg-unibe-blue-hover text-white rounded-lg transition-all font-bold shadow active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {{ guardandoUsuario() ? 'Guardando…' : 'Guardar Cambios' }}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  }
+
+  <!-- Modal: alcance del coordinador (tipo + carreras del catálogo) -->
+  @if (showAlcanceModal()) {
+    <div class="fixed inset-0 z-50 !mt-0 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-2 sm:p-4 animate-fade-in overflow-y-auto">
+      <div class="flex max-h-[calc(100dvh-1rem)] w-full max-w-2xl flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-2xl sm:max-h-[calc(100dvh-2rem)]">
+        <div class="p-4 sm:p-5 border-b border-slate-200 bg-slate-50 flex justify-between items-center shrink-0">
+          <div>
+            <h3 class="text-sm font-bold text-unibe-blue uppercase tracking-wide">Alcance del coordinador</h3>
+            <p class="text-[10px] text-slate-500 mt-0.5">{{ alcanceUsuario()?.nombre }} {{ alcanceUsuario()?.apellido }}</p>
+          </div>
+          <button (click)="showAlcanceModal.set(false)" class="text-slate-400 hover:text-slate-700 transition-all" aria-label="Cerrar">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        <div class="min-h-0 overflow-y-auto p-4 sm:p-6 space-y-4 text-xs">
+          <div>
+            <label class="block font-bold text-slate-700 uppercase mb-2">Tipo de coordinación</label>
+            <select [(ngModel)]="alcance.tipo" name="alcanceTipo" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 focus:border-unibe-blue rounded-lg outline-none text-slate-800">
+              <option value="AMBOS">Prácticas y Vinculación</option>
+              <option value="PRACTICAS">Solo Prácticas</option>
+              <option value="VINCULACION">Solo Vinculación</option>
+            </select>
+            <p class="mt-1 text-[10px] text-slate-400">Define qué secciones ve en su menú y qué expedientes puede gestionar.</p>
+          </div>
+
+          <div>
+            <label class="block font-bold text-slate-700 uppercase mb-2">Carreras asignadas *</label>
+            <div class="grid max-h-56 grid-cols-1 gap-2 overflow-y-auto rounded-lg border border-slate-200 p-2 sm:grid-cols-2">
+              @for (carrera of carrerasCatalogo(); track carrera.id) {
+                <label class="flex items-center gap-1.5 px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg cursor-pointer text-[11px] font-semibold text-slate-700">
+                  <input type="checkbox" [checked]="carreraAsignadaAlcance(carrera.nombre)" (change)="toggleCarreraAlcance(carrera.nombre)" class="accent-unibe-blue" />
+                  {{ carrera.nombre }}
+                </label>
+              } @empty {
+                <span class="text-[10px] text-slate-400">No hay carreras en el catálogo. Créalas en Convocatorias → Catálogo de carreras.</span>
+              }
+            </div>
+            <p class="mt-2 text-[10px] text-slate-400">El coordinador solo verá estudiantes y expedientes de las carreras marcadas.</p>
+          </div>
+
+          <div class="flex justify-end gap-2 pt-2 border-t border-slate-100">
+            <button type="button" (click)="showAlcanceModal.set(false)" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg font-bold transition-all">Cancelar</button>
+            <button type="button" (click)="saveAlcance()" [disabled]="guardandoAlcance()" class="px-4 py-2 bg-unibe-blue hover:bg-unibe-blue-hover disabled:bg-slate-300 text-white rounded-lg font-bold shadow transition-all">
+              Guardar alcance
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  }
+</div>

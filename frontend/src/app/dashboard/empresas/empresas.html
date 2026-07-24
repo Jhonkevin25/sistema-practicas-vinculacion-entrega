@@ -1,0 +1,656 @@
+<div class="space-y-6">
+  <!-- Section Header -->
+  <div class="flex justify-between items-center bg-white p-5 border border-slate-200 rounded-xl shadow-sm">
+    <div>
+      <h2 class="text-base font-bold text-unibe-blue uppercase tracking-wide">Registro de Empresas</h2>
+      <p class="text-xs text-slate-500 font-medium">Empresas receptoras, convenios y capacidad de prácticas del periodo {{ periodoActual() }}.</p>
+    </div>
+    <button
+      (click)="openCreateModal()"
+      class="px-4 py-2.5 bg-unibe-blue hover:bg-unibe-blue-hover text-white text-xs font-bold rounded-lg transition-all flex items-center gap-2 hover:shadow active:scale-[0.98]"
+    >
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-4 h-4">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+      </svg>
+      <span>Registrar Empresa</span>
+    </button>
+  </div>
+
+  <!-- Loading State -->
+  @if (loading()) {
+    <div class="flex justify-center items-center py-20 bg-white border border-slate-200 rounded-xl shadow-sm">
+      <svg class="animate-spin h-8 w-8 text-unibe-blue" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+      </svg>
+    </div>
+  } @else {
+    <!-- Filtros del listado (resueltos en el backend) -->
+    <div class="bg-white border border-slate-200 rounded-xl shadow-sm p-4 flex flex-wrap items-end gap-3 text-xs">
+      <label class="flex-1 min-w-52">
+        <span class="mb-1.5 block text-[10px] font-bold uppercase text-slate-500">Buscar</span>
+        <input type="text" name="filtroTextoEmpresas" [(ngModel)]="filtroTexto" (ngModelChange)="buscarConRetardo()" placeholder="Nombre o RUC…" class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 outline-none focus:border-unibe-blue" />
+      </label>
+      <label class="min-w-36">
+        <span class="mb-1.5 block text-[10px] font-bold uppercase text-slate-500">Estado</span>
+        <select name="filtroActivoEmpresas" [(ngModel)]="filtroActivo" (ngModelChange)="aplicarFiltros()" class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 outline-none focus:border-unibe-blue">
+          <option value="TODOS">Todas</option>
+          <option value="true">Activas</option>
+          <option value="false">Inactivas</option>
+        </select>
+      </label>
+    </div>
+
+    <!-- Table View -->
+    <div class="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
+      <div class="overflow-x-auto">
+        <table class="w-full text-left border-collapse text-xs">
+          <thead>
+            <tr class="border-b border-slate-200 text-slate-400 font-bold uppercase bg-slate-50">
+              <th class="p-4">RUC</th>
+              <th class="p-4">Nombre de la Empresa</th>
+              <th class="p-4">Convenio</th>
+              <th class="p-4">Cupos del periodo {{ periodoActual() }}</th>
+              <th class="p-4">Estado</th>
+              <th class="p-4 text-right">Acciones</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-100 text-slate-700">
+            @for (emp of empresas(); track emp.id) {
+              <tr class="hover:bg-slate-50/50 transition-all">
+                <td class="p-4 font-mono text-slate-600 font-semibold">{{ emp.ruc }}</td>
+                <td class="p-4 font-bold text-slate-800">{{ emp.nombre }}</td>
+                <td class="p-4">
+                  <span
+                    [class]="claseEstadoConvenio(emp.id)"
+                    class="px-2 py-0.5 rounded text-[10px] font-bold border"
+                  >
+                    {{ estadoConvenio(emp.id) }}
+                  </span>
+                </td>
+                <td class="p-4">
+                  <button
+                    type="button"
+                    (click)="openOferta(emp)"
+                    class="min-h-[32px] w-[180px] flex items-center justify-between px-3 py-1.5 rounded-lg border shadow-sm transition-all duration-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-unibe-blue"
+                    [class]="claseOfertaBoton(emp.id)"
+                    [attr.aria-label]="'Ver cupos del periodo de ' + emp.nombre"
+                  >
+                    <div class="text-left">
+                      <span class="block font-bold text-[11px] uppercase tracking-wide">{{ resumenOferta(emp.id) }}</span>
+                      @if (ofertaDeEmpresa(emp.id); as oferta) {
+                        <span class="block text-[10px] font-medium opacity-75 mt-0.5">
+                          {{ oferta.distribucion === 'GENERAL' ? 'Distribución general' : 'Distribución por carrera' }}
+                        </span>
+                      }
+                    </div>
+                    <svg class="h-4 w-4 opacity-50 shrink-0 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+                    </svg>
+                  </button>
+                </td>
+                <td class="p-4">
+                  <button
+                    (click)="toggleActive(emp)"
+                    [class]="emp.activo ? 'bg-green-50 border-green-200 text-green-700' : 'bg-red-50 border-red-200 text-red-700'"
+                    class="px-2.5 py-0.5 rounded-full text-[10px] font-bold border select-none transition-all hover:scale-105 active:scale-95"
+                  >
+                    {{ emp.activo ? 'Habilitada' : 'Deshabilitada' }}
+                  </button>
+                </td>
+                <td class="p-4 text-right space-x-2">
+                  @if (authService.getRole() === 'ADMIN' || authService.getRole() === 'COORDINADOR') {
+                    <button
+                      (click)="openTutores(emp)"
+                      title="Ver tutores externos"
+                      class="px-2.5 py-2 text-[10px] font-bold text-slate-700 bg-slate-50 border border-slate-200 rounded-lg hover:bg-slate-100 transition-all"
+                    >
+                      Tutores
+                    </button>
+                    <button
+                      (click)="openConvenios(emp)"
+                      title="Ver convenios"
+                      class="px-2.5 py-2 text-[10px] font-bold text-unibe-blue bg-blue-50 border border-blue-100 rounded-lg hover:bg-blue-100 transition-all"
+                    >
+                      Convenios
+                    </button>
+                  }
+                  <button
+                    (click)="openEditModal(emp)"
+                    class="p-2 text-slate-400 hover:text-unibe-blue hover:bg-slate-100 rounded-lg transition-all"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L6.83 20.013a4.5 4.5 0 0 1-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 0 1 1.13-1.897L16.863 4.487Zm0 0L19.5 7.125" />
+                    </svg>
+                  </button>
+                  <button
+                    (click)="emp.id && deleteEmpresa(emp.id)"
+                    class="p-2 text-slate-400 hover:text-red-600 hover:bg-slate-100 rounded-lg transition-all"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
+                    </svg>
+                  </button>
+                </td>
+              </tr>
+            } @empty {
+              <tr>
+                <td colspan="6" class="p-10 text-center text-slate-400 font-medium">
+                  No hay empresas que coincidan con los filtros actuales.
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+      <app-paginador
+        [pagina]="pagina()"
+        [totalPaginas]="totalPaginas()"
+        [totalElementos]="totalElementos()"
+        [tamano]="tamanoPagina"
+        [cargando]="isRefreshing()"
+        (cambiar)="cambiarPagina($event)"
+      />
+    </div>
+  }
+
+  <!-- Creation/Editing Modal -->
+  @if (showModal()) {
+    <div class="fixed inset-0 z-50 !mt-0 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 overflow-y-auto">
+      <div class="bg-white border border-slate-200 rounded-2xl w-full max-w-2xl overflow-hidden shadow-2xl relative">
+        <div class="p-5 border-b border-slate-200 bg-slate-50 flex justify-between items-center">
+          <h3 class="text-sm font-bold text-unibe-blue uppercase tracking-wide">{{ isEdit ? 'Editar Información' : 'Registrar Nueva Empresa' }}</h3>
+          <button (click)="closeModal()" class="text-slate-400 hover:text-slate-700 transition-all">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        <form (ngSubmit)="saveEmpresa()" class="p-6 space-y-4 text-xs">
+          <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div>
+              <label class="block font-bold text-slate-700 uppercase mb-2">RUC *</label>
+              <input
+                type="text"
+                name="ruc"
+                [(ngModel)]="currentEmpresa.ruc"
+                required
+                class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg outline-none focus:border-unibe-blue text-slate-800"
+                placeholder="1791234567001"
+                maxlength="13"
+              />
+            </div>
+            <div>
+              <label class="block font-bold text-slate-700 uppercase mb-2">Nombre Comercial *</label>
+              <input
+                type="text"
+                name="nombre"
+                [(ngModel)]="currentEmpresa.nombre"
+                required
+                class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg outline-none focus:border-unibe-blue text-slate-800"
+                placeholder="Empresa S.A."
+              />
+            </div>
+          </div>
+
+          <div>
+            <label class="block font-bold text-slate-700 uppercase mb-2">Dirección</label>
+            <textarea
+              name="direccion"
+              [(ngModel)]="currentEmpresa.direccion"
+              rows="3"
+              class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg outline-none focus:border-unibe-blue text-slate-800 resize-none"
+              placeholder="Av. Amazonas y Colón, Quito"
+            ></textarea>
+          </div>
+
+          <div class="pt-4 border-t border-slate-200 flex justify-end gap-3">
+            <button
+              type="button"
+              (click)="closeModal()"
+              class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg transition-all font-bold border border-slate-200"
+            >
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              class="px-4 py-2 bg-unibe-blue hover:bg-unibe-blue-hover text-white rounded-lg transition-all font-bold shadow active:scale-[0.98]"
+            >
+              Guardar Cambios
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  }
+
+  @if (showConvenioModal()) {
+    <div class="fixed inset-0 z-50 !mt-0 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-2 sm:p-4 overflow-y-auto">
+      <div class="flex max-h-[calc(100dvh-1rem)] w-full max-w-3xl flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-2xl sm:max-h-[calc(100dvh-2rem)]">
+        <div class="p-4 sm:p-5 border-b border-slate-200 bg-slate-50 flex justify-between items-center shrink-0">
+          <div>
+            <h3 class="text-sm font-bold text-unibe-blue uppercase tracking-wide">Convenios</h3>
+            <p class="text-xs text-slate-500 mt-1">{{ selectedEmpresaConvenio()?.nombre }}</p>
+            <p class="text-[10px] text-slate-400 mt-1">El convenio habilita la relación documental; los cupos se administran por periodo.</p>
+          </div>
+          <button (click)="closeConvenios()" title="Cerrar" class="p-2 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-slate-100">
+            <span aria-hidden="true">✕</span>
+          </button>
+        </div>
+
+        <div class="min-h-0 overflow-y-auto p-4 sm:p-6 space-y-6 text-xs">
+          <div class="border border-slate-200 rounded-lg overflow-x-auto">
+            <table class="w-full min-w-[560px] text-left">
+              <thead class="bg-slate-50 text-slate-500 uppercase text-[10px] font-bold">
+                <tr>
+                  <th class="p-3">Código</th>
+                  <th class="p-3">Vigencia</th>
+                  <th class="p-3">Estado</th>
+                  @if (isAdmin()) { <th class="p-3 text-right">Acciones</th> }
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-slate-100">
+                @for (convenio of conveniosDeEmpresa(selectedEmpresaConvenio()?.id); track convenio.id) {
+                  <tr>
+                    <td class="p-3 font-bold text-slate-800">{{ convenio.codigo }}</td>
+                    <td class="p-3 font-mono text-slate-600">{{ convenio.fechaInicio | date:'dd/MM/yyyy' }} - {{ convenio.fechaFin | date:'dd/MM/yyyy' }}</td>
+                    <td class="p-3"><span class="px-2 py-1 rounded border text-[10px] font-bold" [class]="claseConvenio(convenio)">{{ convenio.estado }}</span></td>
+                    @if (isAdmin()) {
+                      <td class="p-3 text-right space-x-2">
+                        <button (click)="editarConvenio(convenio)" class="text-unibe-blue font-bold hover:underline">Editar</button>
+                        <button (click)="convenio.id && deleteConvenio(convenio.id)" class="text-red-600 font-bold hover:underline">Eliminar</button>
+                      </td>
+                    }
+                  </tr>
+                } @empty {
+                  <tr><td [attr.colspan]="isAdmin() ? 4 : 3" class="p-6 text-center text-slate-400">No hay convenios registrados.</td></tr>
+                }
+              </tbody>
+            </table>
+          </div>
+
+          @if (isAdmin()) {
+            <form (ngSubmit)="saveConvenio()" class="space-y-4 border-t border-slate-200 pt-5">
+              <div class="flex items-center justify-between">
+                <h4 class="font-bold text-slate-800 uppercase">{{ isEditConvenio ? 'Editar convenio' : 'Nuevo convenio' }}</h4>
+                @if (isEditConvenio) {
+                  <button type="button" (click)="nuevoConvenio()" class="text-unibe-blue font-bold">Nuevo</button>
+                }
+              </div>
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label class="block font-bold text-slate-600 uppercase mb-2">Código *</label>
+                  <input [(ngModel)]="currentConvenio.codigo" name="codigoConvenioEmpresa" required class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg outline-none focus:border-unibe-blue" />
+                </div>
+                <div>
+                  <label class="block font-bold text-slate-600 uppercase mb-2">Estado</label>
+                  <select [(ngModel)]="currentConvenio.estado" name="estadoConvenioEmpresa" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg outline-none focus:border-unibe-blue">
+                    <option value="VIGENTE">Vigente</option>
+                    <option value="SUSPENDIDO">Suspendido</option>
+                    <option value="FINALIZADO">Finalizado</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block font-bold text-slate-600 uppercase mb-2">Fecha de inicio *</label>
+                  <input type="date" [(ngModel)]="currentConvenio.fechaInicio" name="inicioConvenioEmpresa" required class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg outline-none focus:border-unibe-blue" />
+                </div>
+                <div>
+                  <label class="block font-bold text-slate-600 uppercase mb-2">Fecha de fin *</label>
+                  <input type="date" [(ngModel)]="currentConvenio.fechaFin" name="finConvenioEmpresa" required class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg outline-none focus:border-unibe-blue" />
+                </div>
+                <div>
+                  <label class="block font-bold text-slate-600 uppercase mb-2">Documento</label>
+                  <input type="url" [(ngModel)]="currentConvenio.urlDocumento" name="documentoConvenioEmpresa" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg outline-none focus:border-unibe-blue" placeholder="https://" />
+                </div>
+              </div>
+              <div>
+                <label class="block font-bold text-slate-600 uppercase mb-2">Carreras cubiertas</label>
+                <p class="text-[10px] text-slate-400 mb-2">Marca las carreras del catálogo que cubre el convenio. Sin selección = cubre todas.</p>
+                <div class="grid max-h-56 grid-cols-1 gap-2 overflow-y-auto rounded-lg border border-slate-200 p-2 sm:grid-cols-2 lg:grid-cols-3">
+                  @for (carrera of opcionesCarrerasConvenio(); track carrera) {
+                    <label class="flex items-center gap-1.5 px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg cursor-pointer text-[11px] font-semibold text-slate-700">
+                      <input type="checkbox" [checked]="carreraSeleccionada(carrera)" (change)="toggleCarreraConvenio(carrera)" class="accent-unibe-blue" />
+                      {{ carrera }}
+                    </label>
+                  } @empty {
+                    <span class="text-[10px] text-slate-400">No hay carreras en el catálogo. Créalas en Convocatorias → Catálogo de carreras.</span>
+                  }
+                </div>
+              </div>
+              <div class="flex justify-end">
+                <button type="submit" class="px-4 py-2 bg-unibe-blue hover:bg-unibe-blue-hover text-white rounded-lg font-bold">Guardar convenio</button>
+              </div>
+            </form>
+          }
+        </div>
+      </div>
+    </div>
+  }
+
+  @if (showTutoresModal()) {
+    <div class="fixed inset-0 z-50 !mt-0 flex items-center justify-center overflow-y-auto bg-slate-950/65 p-2 backdrop-blur-sm sm:p-4">
+      <section
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="titulo-tutores-empresa"
+        class="flex max-h-[calc(100dvh-1rem)] w-full max-w-4xl flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-2xl sm:max-h-[calc(100dvh-2rem)]"
+      >
+        <header class="flex shrink-0 items-start justify-between gap-4 border-b border-slate-200 bg-slate-50 p-4 sm:p-5">
+          <div>
+            <h3 id="titulo-tutores-empresa" class="text-sm font-bold uppercase text-unibe-blue">Tutores externos</h3>
+            <p class="mt-1 text-xs font-semibold text-slate-700">{{ selectedEmpresaTutor()?.nombre }}</p>
+            <p class="mt-1 text-[10px] text-slate-500">Cada tutor solo podrá recibir estudiantes de las carreras marcadas para esta empresa.</p>
+          </div>
+          <button type="button" (click)="closeTutores()" aria-label="Cerrar tutores externos" class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-200">
+            <span aria-hidden="true" class="text-lg">×</span>
+          </button>
+        </header>
+
+        <div class="min-h-0 overflow-y-auto p-4 text-xs sm:p-6">
+          @if (loadingTutores()) {
+            <div class="flex min-h-36 items-center justify-center gap-3 text-slate-500">
+              <span class="h-5 w-5 animate-spin rounded-full border-2 border-slate-200 border-t-unibe-blue" aria-hidden="true"></span>
+              Cargando tutores de la empresa...
+            </div>
+          } @else {
+            <div class="mb-4 grid grid-cols-1 gap-3 rounded-lg border border-slate-200 bg-slate-50 p-3 sm:grid-cols-[minmax(0,1fr)_minmax(12rem,.35fr)]">
+              <label>
+                <span class="mb-1.5 block font-bold uppercase text-slate-600">Buscar tutor vinculado</span>
+                <input
+                  type="search"
+                  [ngModel]="filtroTutorTexto()"
+                  (ngModelChange)="filtroTutorTexto.set($event)"
+                  placeholder="Nombre, correo o cargo..."
+                  class="min-h-10 w-full rounded-lg border border-slate-300 bg-white px-3 outline-none focus:border-unibe-blue focus-visible:ring-2 focus-visible:ring-unibe-blue/20"
+                />
+              </label>
+              <label>
+                <span class="mb-1.5 block font-bold uppercase text-slate-600">Carrera</span>
+                <select
+                  [ngModel]="filtroTutorCarrera()"
+                  (ngModelChange)="filtroTutorCarrera.set($event)"
+                  class="min-h-10 w-full rounded-lg border border-slate-300 bg-white px-3 outline-none focus:border-unibe-blue"
+                >
+                  <option value="TODOS">Todas</option>
+                  @for (carrera of carrerasFiltroTutores(); track carrera) {
+                    <option [value]="carrera">{{ carrera }}</option>
+                  }
+                </select>
+              </label>
+              <p class="text-[10px] font-semibold text-slate-500 sm:col-span-2">
+                Mostrando {{ tutoresEmpresaFiltrados().length }} de {{ tutoresEmpresa().length }} tutores de {{ selectedEmpresaTutor()?.nombre }}.
+              </p>
+            </div>
+
+            <div class="overflow-x-auto rounded-lg border border-slate-200">
+              <table class="w-full min-w-[680px] text-left">
+                <thead class="bg-slate-50 text-[10px] font-bold uppercase text-slate-500">
+                  <tr>
+                    <th class="p-3">Tutor</th>
+                    <th class="p-3">Cargo</th>
+                    <th class="p-3">Carreras habilitadas</th>
+                    <th class="p-3">Estado</th>
+                    @if (isAdmin()) { <th class="p-3 text-right">Acciones</th> }
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100">
+                  @for (vinculo of tutoresEmpresaFiltrados(); track vinculo.id) {
+                    <tr>
+                      <td class="p-3">
+                        <span class="block font-bold text-slate-800">{{ vinculo.nombre }} {{ vinculo.apellido }}</span>
+                        <span class="mt-0.5 block text-[10px] text-slate-500">{{ vinculo.email || 'Registro histórico sin cuenta vinculada' }}</span>
+                      </td>
+                      <td class="p-3 text-slate-600">{{ vinculo.cargo || 'Sin cargo registrado' }}</td>
+                      <td class="p-3">
+                        <div class="flex max-w-sm flex-wrap gap-1.5">
+                          @for (carrera of vinculo.carreras; track carrera.id) {
+                            <span class="rounded border border-blue-100 bg-blue-50 px-2 py-1 text-[10px] font-semibold text-unibe-blue">{{ carrera.nombre }}</span>
+                          } @empty {
+                            <span class="text-[10px] font-semibold text-amber-700">Sin carreras: no asignable</span>
+                          }
+                        </div>
+                      </td>
+                      <td class="p-3">
+                        <span class="rounded-full border px-2 py-1 text-[10px] font-bold" [class]="vinculo.activo ? 'border-green-200 bg-green-50 text-green-700' : 'border-slate-200 bg-slate-100 text-slate-500'">
+                          {{ vinculo.activo ? 'Activo' : 'Inactivo' }}
+                        </span>
+                      </td>
+                      @if (isAdmin()) {
+                        <td class="p-3 text-right">
+                          <button type="button" (click)="editarTutorEmpresa(vinculo)" class="mr-3 font-bold text-unibe-blue hover:underline">Editar</button>
+                          <button type="button" (click)="deleteTutorEmpresa(vinculo)" class="font-bold text-red-600 hover:underline">Eliminar</button>
+                        </td>
+                      }
+                    </tr>
+                  } @empty {
+                    <tr>
+                      <td [attr.colspan]="isAdmin() ? 5 : 4" class="p-8 text-center text-slate-400">
+                        {{ tutoresEmpresa().length === 0 ? 'Esta empresa todavía no tiene tutores externos configurados.' : 'No hay tutores que coincidan con los filtros seleccionados.' }}
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+
+            @if (isAdmin()) {
+              <form (ngSubmit)="saveTutorEmpresa()" class="mt-6 space-y-5 border-t border-slate-200 pt-5">
+                <div class="flex items-center justify-between gap-4">
+                  <div>
+                    <h4 class="font-bold uppercase text-slate-800">{{ currentTutorEmpresa.id ? 'Editar vínculo' : 'Vincular tutor' }}</h4>
+                    <p class="mt-1 text-[10px] text-slate-500">La cuenta debe existir previamente en Usuarios con rol Tutor y área Prácticas o Ambas.</p>
+                  </div>
+                  @if (currentTutorEmpresa.id) {
+                    <button type="button" (click)="nuevoTutorEmpresa()" class="font-bold text-unibe-blue">Nuevo vínculo</button>
+                  }
+                </div>
+
+                <label class="block">
+                  <span class="mb-2 block font-bold uppercase text-slate-600">Buscar cuenta disponible</span>
+                  <input
+                    type="search"
+                    [ngModel]="busquedaCuentaTutor()"
+                    (ngModelChange)="busquedaCuentaTutor.set($event)"
+                    name="busquedaCuentaTutor"
+                    placeholder="Nombre o correo institucional..."
+                    class="min-h-10 w-full rounded-lg border border-slate-300 bg-white px-3 outline-none focus:border-unibe-blue focus-visible:ring-2 focus-visible:ring-unibe-blue/20"
+                  />
+                  <span class="mt-1 block text-[10px] text-slate-500">{{ tutoresCandidatosDisponibles().length }} cuenta(s) disponible(s) para esta empresa.</span>
+                </label>
+
+                <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+                  <label>
+                    <span class="mb-2 block font-bold uppercase text-slate-600">Cuenta de tutor *</span>
+                    <select [(ngModel)]="currentTutorEmpresa.tutorId" name="tutorEmpresaUsuario" required class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 outline-none focus:border-unibe-blue">
+                      <option [ngValue]="null">Selecciona una cuenta...</option>
+                      @for (tutor of tutoresCandidatosDisponibles(); track tutor.id) {
+                        <option [ngValue]="tutor.id">{{ tutor.nombre }} {{ tutor.apellido }} · {{ tutor.email }}</option>
+                      } @empty {
+                        <option disabled>No hay cuentas que coincidan con la búsqueda</option>
+                      }
+                    </select>
+                  </label>
+                  <label>
+                    <span class="mb-2 block font-bold uppercase text-slate-600">Cargo o área interna</span>
+                    <input [(ngModel)]="currentTutorEmpresa.cargo" name="tutorEmpresaCargo" maxlength="100" placeholder="Ej. Responsable de Desarrollo" class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 outline-none focus:border-unibe-blue" />
+                  </label>
+                </div>
+
+                <fieldset>
+                  <legend class="mb-2 font-bold uppercase text-slate-600">Carreras que puede tutorizar *</legend>
+                  <div class="grid max-h-56 grid-cols-1 gap-2 overflow-y-auto rounded-lg border border-slate-200 p-2 sm:grid-cols-2 lg:grid-cols-3">
+                    @for (carrera of carrerasActivas(); track carrera.id) {
+                      <label class="flex min-h-10 cursor-pointer items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 font-semibold text-slate-700">
+                        <input type="checkbox" [checked]="carreraTutorSeleccionada(carrera.id)" (change)="toggleCarreraTutor(carrera.id)" class="h-4 w-4 accent-unibe-blue" />
+                        <span>{{ carrera.nombre }}</span>
+                      </label>
+                    } @empty {
+                      <p class="col-span-full py-4 text-center text-slate-400">No hay carreras activas en el catálogo.</p>
+                    }
+                  </div>
+                </fieldset>
+
+                <label class="flex min-h-10 items-center gap-2 font-bold text-slate-700">
+                  <input type="checkbox" [(ngModel)]="currentTutorEmpresa.activo" name="tutorEmpresaActivo" class="h-4 w-4 accent-unibe-blue" />
+                  Vínculo activo
+                </label>
+
+                <footer class="flex flex-col-reverse gap-2 border-t border-slate-200 pt-4 sm:flex-row sm:justify-end">
+                  <button type="button" (click)="nuevoTutorEmpresa()" class="min-h-10 rounded-lg border border-slate-200 bg-slate-100 px-4 font-bold text-slate-700 hover:bg-slate-200">Limpiar</button>
+                  <button type="submit" [disabled]="savingTutor()" class="min-h-10 rounded-lg bg-unibe-blue px-4 font-bold text-white hover:bg-unibe-blue-hover disabled:cursor-not-allowed disabled:opacity-60">
+                    {{ savingTutor() ? 'Guardando...' : 'Guardar tutor' }}
+                  </button>
+                </footer>
+              </form>
+            }
+          }
+        </div>
+      </section>
+    </div>
+  }
+
+  @if (showOfertaModal()) {
+    <div class="fixed inset-0 z-50 !mt-0 flex items-center justify-center bg-slate-950/65 backdrop-blur-sm p-2 sm:p-4 overflow-y-auto">
+      <section
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="titulo-oferta-cupos"
+        class="flex max-h-[calc(100dvh-1rem)] w-full max-w-3xl flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-2xl sm:max-h-[calc(100dvh-2rem)]"
+      >
+        <header class="flex shrink-0 items-start justify-between gap-4 border-b border-slate-200 bg-slate-50 p-4 sm:p-5">
+          <div>
+            <h3 id="titulo-oferta-cupos" class="text-sm font-bold uppercase text-unibe-blue">Capacidad de prácticas · Periodo {{ periodoActual() }}</h3>
+            <p class="mt-1 text-xs font-semibold text-slate-700">{{ selectedEmpresaOferta()?.nombre }}</p>
+            <p class="mt-1 text-[10px] text-slate-500">Capacidad informada por la empresa para prácticas preprofesionales.</p>
+          </div>
+          <button type="button" (click)="closeOferta()" aria-label="Cerrar capacidad de prácticas" class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-200">
+            <span aria-hidden="true" class="text-lg">×</span>
+          </button>
+        </header>
+
+        <div class="min-h-0 overflow-y-auto p-4 text-xs sm:p-6">
+          @if (currentOferta.id) {
+            <dl class="grid grid-cols-2 border-y border-slate-200 bg-slate-50 sm:grid-cols-4">
+              <div class="p-3">
+                <dt class="text-[10px] font-bold uppercase text-slate-500">Autorizados</dt>
+                <dd class="mt-1 font-mono text-lg font-bold text-slate-900">{{ currentOferta.cuposTotales }}</dd>
+              </div>
+              <div class="p-3">
+                <dt class="text-[10px] font-bold uppercase text-slate-500">En vacantes</dt>
+                <dd class="mt-1 font-mono text-lg font-bold text-amber-700">{{ currentOferta.cuposReservados || 0 }}</dd>
+              </div>
+              <div class="p-3">
+                <dt class="text-[10px] font-bold uppercase text-slate-500">Ocupados</dt>
+                <dd class="mt-1 font-mono text-lg font-bold text-unibe-blue">{{ currentOferta.cuposOcupados || 0 }}</dd>
+              </div>
+              <div class="p-3">
+                <dt class="text-[10px] font-bold uppercase text-slate-500">Libres</dt>
+                <dd class="mt-1 font-mono text-lg font-bold text-emerald-700">{{ currentOferta.cuposDisponibles || 0 }}</dd>
+              </div>
+            </dl>
+          }
+
+          @if (isAdmin()) {
+            <form (ngSubmit)="saveOferta()" class="mt-5 space-y-5">
+              <fieldset>
+                <legend class="mb-2 block font-bold uppercase text-slate-700">Distribución *</legend>
+                <div class="inline-flex w-full rounded-lg border border-slate-200 bg-slate-100 p-1 sm:w-auto" role="radiogroup" aria-label="Distribución de cupos">
+                  <button
+                    type="button"
+                    role="radio"
+                    [attr.aria-checked]="currentOferta.distribucion === 'GENERAL'"
+                    (click)="currentOferta.distribucion = 'GENERAL'; cambiarDistribucion()"
+                    class="min-h-10 flex-1 rounded-md px-4 font-bold sm:flex-none"
+                    [class]="currentOferta.distribucion === 'GENERAL' ? 'bg-white text-unibe-blue shadow-sm' : 'text-slate-500'"
+                  >General</button>
+                  <button
+                    type="button"
+                    role="radio"
+                    [attr.aria-checked]="currentOferta.distribucion === 'POR_CARRERA'"
+                    (click)="currentOferta.distribucion = 'POR_CARRERA'"
+                    class="min-h-10 flex-1 rounded-md px-4 font-bold sm:flex-none"
+                    [class]="currentOferta.distribucion === 'POR_CARRERA' ? 'bg-white text-unibe-blue shadow-sm' : 'text-slate-500'"
+                  >Por carrera</button>
+                </div>
+              </fieldset>
+
+              @if (currentOferta.distribucion === 'GENERAL') {
+                <div class="max-w-xs">
+                  <label for="oferta-cupos-total" class="mb-2 block font-bold uppercase text-slate-700">Cupos autorizados *</label>
+                  <input id="oferta-cupos-total" type="number" min="1" name="cuposTotalesOferta" [(ngModel)]="currentOferta.cuposTotales" required class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 font-mono outline-none focus:border-unibe-blue" />
+                </div>
+              } @else {
+                <fieldset>
+                  <legend class="mb-2 block font-bold uppercase text-slate-700">Cupos por carrera *</legend>
+                  <div class="max-h-72 overflow-y-auto border-y border-slate-200">
+                    @for (carrera of carrerasActivas(); track carrera.id) {
+                      <div class="grid min-h-12 grid-cols-[1fr_6rem] items-center gap-3 border-b border-slate-100 py-2 last:border-b-0">
+                        <label class="flex min-h-10 cursor-pointer items-center gap-2 font-semibold text-slate-700">
+                          <input type="checkbox" [checked]="!!asignacionCarrera(carrera.id)" (change)="toggleCarreraOferta(carrera)" class="h-4 w-4 accent-unibe-blue" />
+                          <span>{{ carrera.nombre }}</span>
+                        </label>
+                        <input
+                          type="number"
+                          min="1"
+                          [disabled]="!asignacionCarrera(carrera.id)"
+                          [ngModel]="asignacionCarrera(carrera.id)?.cupos || 1"
+                          (ngModelChange)="actualizarCuposCarrera(carrera, $event)"
+                          [name]="'cuposCarrera' + carrera.id"
+                          [attr.aria-label]="'Cupos para ' + carrera.nombre"
+                          class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 font-mono outline-none focus:border-unibe-blue disabled:opacity-40"
+                        />
+                      </div>
+                    } @empty {
+                      <p class="py-5 text-center text-slate-400">No hay carreras activas en el catálogo.</p>
+                    }
+                  </div>
+                </fieldset>
+              }
+
+              <label class="flex min-h-10 items-center gap-2 font-bold text-slate-700">
+                <input type="checkbox" name="ofertaActiva" [(ngModel)]="currentOferta.activo" class="h-4 w-4 accent-unibe-blue" />
+                Capacidad activa para el periodo
+              </label>
+
+              <div>
+                <label for="oferta-observacion" class="mb-2 block font-bold uppercase text-slate-700">Observación</label>
+                <textarea id="oferta-observacion" name="observacionOferta" [(ngModel)]="currentOferta.observacion" rows="2" class="w-full resize-y rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 outline-none focus:border-unibe-blue"></textarea>
+              </div>
+
+              <footer class="flex flex-col-reverse gap-2 border-t border-slate-200 pt-4 sm:flex-row sm:justify-between">
+                @if (currentOferta.id) {
+                  <button type="button" (click)="deleteOferta()" class="min-h-10 rounded-lg border border-red-200 px-4 font-bold text-red-700 hover:bg-red-50">Eliminar capacidad</button>
+                } @else { <span></span> }
+                <div class="flex flex-col-reverse gap-2 sm:flex-row">
+                  <button type="button" (click)="closeOferta()" class="min-h-10 rounded-lg border border-slate-200 bg-slate-100 px-4 font-bold text-slate-700 hover:bg-slate-200">Cancelar</button>
+                  <button type="submit" class="min-h-10 rounded-lg bg-unibe-blue px-4 font-bold text-white hover:bg-unibe-blue-hover">Guardar cupos</button>
+                </div>
+              </footer>
+            </form>
+          } @else {
+            <div class="mt-5">
+              @if (!currentOferta.id) {
+                <p class="py-8 text-center font-medium text-slate-500">Administración aún no configuró cupos para esta empresa en el periodo.</p>
+              } @else if (currentOferta.distribucion === 'POR_CARRERA') {
+                <h4 class="mb-2 font-bold uppercase text-slate-700">Distribución por carrera</h4>
+                <div class="overflow-x-auto border-y border-slate-200">
+                  <table class="w-full min-w-[520px] text-left">
+                    <thead class="bg-slate-50 text-[10px] uppercase text-slate-500">
+                      <tr><th class="p-3">Carrera</th><th class="p-3 text-center">Total</th><th class="p-3 text-center">Vacantes</th><th class="p-3 text-center">Ocupados</th><th class="p-3 text-center">Libres</th></tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100">
+                      @for (item of currentOferta.carreras; track item.carrera.id) {
+                        <tr><td class="p-3 font-semibold">{{ item.carrera.nombre }}</td><td class="p-3 text-center font-mono">{{ item.cupos }}</td><td class="p-3 text-center font-mono">{{ item.cuposReservados || 0 }}</td><td class="p-3 text-center font-mono">{{ item.cuposOcupados || 0 }}</td><td class="p-3 text-center font-mono font-bold text-emerald-700">{{ item.cuposDisponibles || 0 }}</td></tr>
+                      }
+                    </tbody>
+                  </table>
+                </div>
+              }
+            </div>
+          }
+        </div>
+      </section>
+    </div>
+  }
+</div>

@@ -1,0 +1,64 @@
+<div class="fixed inset-0 z-[120] flex items-center justify-center overflow-y-auto bg-slate-950/60 p-4 backdrop-blur-sm" (click)="cerrar.emit()">
+  <section class="my-auto flex max-h-[90vh] w-full max-w-3xl flex-col overflow-hidden rounded-lg bg-white shadow-2xl" role="dialog" aria-modal="true" aria-labelledby="comentarios-titulo" (click)="$event.stopPropagation()">
+    <header class="flex items-start justify-between border-b border-slate-200 px-5 py-4">
+      <div>
+        <h2 id="comentarios-titulo" class="text-base font-bold text-slate-900">{{ titulo }}</h2>
+        <p class="mt-1 text-xs text-slate-500">Mensajes institucionales asociados a este expediente.</p>
+      </div>
+      <button type="button" (click)="cerrar.emit()" class="grid h-9 w-9 place-items-center rounded-lg text-xl text-slate-500 hover:bg-slate-100" aria-label="Cerrar">×</button>
+    </header>
+
+    <div class="min-h-40 flex-1 space-y-2 overflow-y-auto bg-slate-50 px-5 py-4">
+      @if (cargando()) {
+        <p class="py-10 text-center text-xs font-medium text-slate-500">Cargando comunicaciones…</p>
+      } @else {
+        @for (comentario of comentarios(); track comentario.id) {
+          <div class="flex" [class.justify-end]="comentario.autorRol === rol">
+            <article
+              class="max-w-[80%] rounded-2xl px-4 py-2.5 shadow-sm"
+              [class.bg-unibe-blue]="comentario.autorRol === rol"
+              [class.text-white]="comentario.autorRol === rol"
+              [class.rounded-br-sm]="comentario.autorRol === rol"
+              [class.bg-white]="comentario.autorRol !== rol"
+              [class.border]="comentario.autorRol !== rol"
+              [class.border-slate-200]="comentario.autorRol !== rol"
+              [class.text-slate-700]="comentario.autorRol !== rol"
+              [class.rounded-bl-sm]="comentario.autorRol !== rol">
+              <div class="flex flex-wrap items-center justify-between gap-2">
+                <p class="text-[11px] font-bold" [class.text-blue-100]="comentario.autorRol === rol" [class.text-slate-800]="comentario.autorRol !== rol">{{ comentario.autor }} · {{ comentario.autorRol }}</p>
+                <time class="text-[9px]" [class.text-blue-100]="comentario.autorRol === rol" [class.text-slate-400]="comentario.autorRol !== rol">{{ comentario.fechaCreacion | date:'dd/MM/yyyy HH:mm' }}</time>
+              </div>
+              <p class="mt-0.5 text-[9px] font-bold uppercase" [class.text-blue-100]="comentario.autorRol === rol" [class.text-unibe-blue]="comentario.autorRol !== rol">{{ etiquetaAudiencia(comentario.audiencia) }}</p>
+              <p class="mt-1.5 whitespace-pre-wrap text-sm leading-5">{{ comentario.mensaje }}</p>
+            </article>
+          </div>
+        } @empty {
+          <p class="py-10 text-center text-xs font-medium text-slate-500">Todavía no hay comunicaciones en este expediente.</p>
+        }
+      }
+    </div>
+
+    <form class="border-t border-slate-200 bg-white p-5" (ngSubmit)="enviar()">
+      @if (cerrado) {
+        <p class="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-xs text-slate-600">El expediente está finalizado. Su historial permanece disponible en modo de lectura.</p>
+      } @else {
+        <div class="grid gap-3 sm:grid-cols-[200px_1fr]">
+          <label class="text-xs font-bold text-slate-700">Destinatario
+            <select [(ngModel)]="audiencia" name="audienciaComentario" class="mt-1 min-h-11 w-full rounded-lg border border-slate-200 bg-white px-3 text-xs font-normal outline-none focus:border-unibe-blue">
+              @for (opcion of audiencias(); track opcion.valor) {
+                <option [value]="opcion.valor">{{ opcion.etiqueta }}</option>
+              }
+            </select>
+          </label>
+          <label class="text-xs font-bold text-slate-700">Mensaje
+            <textarea [(ngModel)]="mensaje" name="mensajeComentario" rows="3" maxlength="2000" placeholder="Escribe una observación o consulta concreta…" class="mt-1 w-full resize-y rounded-lg border border-slate-200 px-3 py-2 text-sm font-normal outline-none focus:border-unibe-blue"></textarea>
+          </label>
+        </div>
+        <div class="mt-4 flex justify-end gap-2">
+          <button type="button" (click)="cerrar.emit()" class="min-h-10 rounded-lg border border-slate-200 px-4 text-xs font-bold text-slate-700 hover:bg-slate-50">Cerrar</button>
+          <button type="submit" [disabled]="guardando()" class="min-h-10 rounded-lg bg-unibe-blue px-5 text-xs font-bold text-white hover:bg-unibe-blue-hover disabled:cursor-not-allowed disabled:opacity-60">{{ guardando() ? 'Enviando…' : 'Enviar comentario' }}</button>
+        </div>
+      }
+    </form>
+  </section>
+</div>

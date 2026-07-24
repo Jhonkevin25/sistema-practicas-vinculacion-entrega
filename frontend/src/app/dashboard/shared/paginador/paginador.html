@@ -1,0 +1,26 @@
+<div class="flex flex-wrap items-center justify-between gap-3 px-4 py-3 border-t border-slate-200 bg-slate-50/60 text-xs">
+  <span class="text-slate-500 font-medium">
+    @if (totalElementos() === 0) {
+      Sin registros para los filtros actuales
+    } @else {
+      Mostrando <strong class="text-slate-700 font-mono">{{ desde() }}–{{ hasta() }}</strong>
+      de <strong class="text-slate-700 font-mono">{{ totalElementos() }}</strong>
+    }
+    @if (cargando()) {
+      <span class="ml-2 text-unibe-blue font-bold animate-pulse">Actualizando…</span>
+    }
+  </span>
+  @if (totalPaginas() > 1) {
+    <div class="flex items-center gap-2">
+      <button type="button" (click)="anterior()" [disabled]="pagina() === 0 || cargando()"
+              class="min-h-9 px-3 rounded-lg border border-slate-200 bg-white font-bold text-slate-600 hover:border-unibe-blue hover:text-unibe-blue disabled:opacity-40 disabled:cursor-not-allowed">
+        ← Anterior
+      </button>
+      <span class="font-mono font-bold text-slate-600">{{ pagina() + 1 }} / {{ totalPaginas() }}</span>
+      <button type="button" (click)="siguiente()" [disabled]="pagina() + 1 >= totalPaginas() || cargando()"
+              class="min-h-9 px-3 rounded-lg border border-slate-200 bg-white font-bold text-slate-600 hover:border-unibe-blue hover:text-unibe-blue disabled:opacity-40 disabled:cursor-not-allowed">
+        Siguiente →
+      </button>
+    </div>
+  }
+</div>

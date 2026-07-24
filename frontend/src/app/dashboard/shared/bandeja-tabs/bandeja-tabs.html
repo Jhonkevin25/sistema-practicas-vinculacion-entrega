@@ -1,0 +1,19 @@
+<nav class="bg-white border border-slate-200 rounded-lg shadow-sm p-2" aria-label="Bandejas del módulo">
+  <div class="flex gap-2 overflow-x-auto pb-1 snap-x" role="tablist">
+    @for (tab of tabs(); track tab.id) {
+      <button
+        type="button"
+        role="tab"
+        [attr.aria-selected]="activeTab() === tab.id"
+        [attr.aria-controls]="'panel-' + tab.id"
+        (click)="tabChange.emit(tab.id)"
+        [class]="activeTab() === tab.id
+          ? (tab.emphasis === 'warning' ? 'bg-amber-600 border-amber-600 text-white' : 'bg-unibe-blue border-unibe-blue text-white')
+          : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300 hover:bg-slate-50'"
+        class="snap-start shrink-0 min-h-11 px-4 py-2 border rounded-md text-xs font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-unibe-blue focus-visible:ring-offset-2"
+      >
+        {{ tab.label }}
+      </button>
+    }
+  </div>
+</nav>
