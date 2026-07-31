@@ -1,5 +1,6 @@
 package ec.edu.unibe.sistema_practicas.auth;
 
+import ec.edu.unibe.sistema_practicas.notificacion.EmailPlantillaComponent;
 import ec.edu.unibe.sistema_practicas.usuario.Usuario;
 import jakarta.mail.internet.InternetAddress;
 import jakarta.mail.internet.MimeMessage;
@@ -88,18 +89,14 @@ public class CorreoRecuperacionPasswordComponent {
     private String html(Usuario usuario, String link) {
         String nombre = escapeHtml(nombreDestino(usuario));
         String enlace = escapeHtml(link);
-        return """
-                <!doctype html>
-                <html lang="es">
-                <body style="font-family: Arial, sans-serif; color: #1f2937; line-height: 1.5;">
-                  <p>Hola %s,</p>
-                  <h2 style="font-size: 18px; margin: 0 0 12px;">Restablecer contraseña</h2>
-                  <p>Recibimos una solicitud para restablecer tu contraseña del Sistema de Prácticas y Vinculación UNIBE.</p>
-                  <p><a href="%s" style="color: #0f766e;">Crear nueva contraseña</a></p>
-                  <p style="font-size: 12px; color: #6b7280;">Si no solicitaste este cambio, puedes ignorar este mensaje.</p>
-                </body>
-                </html>
+        String contenido = """
+                <p>Hola %s,</p>
+                <h2 style="font-size: 18px; margin: 0 0 12px;">Restablecer contraseña</h2>
+                <p>Recibimos una solicitud para restablecer tu contraseña del Sistema de Prácticas y Vinculación UNIBE.</p>
+                <p><a href="%s" style="color: #0f766e;">Crear nueva contraseña</a></p>
+                <p style="font-size: 12px; color: #6b7280;">Si no solicitaste este cambio, puedes ignorar este mensaje.</p>
                 """.formatted(nombre, enlace);
+        return EmailPlantillaComponent.envolver(contenido, baseUrl);
     }
 
     private String linkRestablecimiento(String token) {

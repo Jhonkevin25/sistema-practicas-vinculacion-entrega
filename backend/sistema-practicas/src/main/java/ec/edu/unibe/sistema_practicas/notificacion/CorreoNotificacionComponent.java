@@ -120,25 +120,21 @@ public class CorreoNotificacionComponent {
     }
 
     private String htmlBienvenida(String nombre, String email, String claveTemporal, String login) {
-        return """
-                <!doctype html>
-                <html lang="es">
-                <body style="font-family: Arial, sans-serif; color: #1f2937; line-height: 1.5;">
-                  <p>Hola %s,</p>
-                  <h2 style="font-size: 18px; margin: 0 0 12px;">Bienvenido al sistema UNIBE</h2>
-                  <p>Tu cuenta institucional fue creada para gestionar tus procesos de prácticas y vinculación.</p>
-                  <p><strong>Usuario:</strong> %s<br><strong>Clave temporal:</strong> %s</p>
-                  <p><a href="%s" style="color: #0f766e;">Ingresar al sistema</a></p>
-                  <p>El sistema solicitará cambiar la clave durante el primer acceso.</p>
-                  <p style="font-size: 12px; color: #6b7280;">No compartas tu clave temporal.</p>
-                </body>
-                </html>
+        String contenido = """
+                <p>Hola %s,</p>
+                <h2 style="font-size: 18px; margin: 0 0 12px;">Bienvenido al sistema UNIBE</h2>
+                <p>Tu cuenta institucional fue creada para gestionar tus procesos de prácticas y vinculación.</p>
+                <p><strong>Usuario:</strong> %s<br><strong>Clave temporal:</strong> %s</p>
+                <p><a href="%s" style="color: #0f766e;">Ingresar al sistema</a></p>
+                <p>El sistema solicitará cambiar la clave durante el primer acceso.</p>
+                <p style="font-size: 12px; color: #6b7280;">No compartas tu clave temporal.</p>
                 """.formatted(
                 escapeHtml(nombre),
                 escapeHtml(email),
                 escapeHtml(claveTemporal),
                 escapeHtml(login)
         );
+        return EmailPlantillaComponent.envolver(contenido, baseUrl);
     }
 
     private String html(Notificacion notificacion, Usuario destino) {
@@ -148,22 +144,18 @@ public class CorreoNotificacionComponent {
                 : "Notificación del sistema");
         String mensaje = escapeHtml(mensaje(notificacion)).replace("\n", "<br>");
         String link = escapeHtml(linkAbsoluto(notificacion.getLink()));
-        return """
-                <!doctype html>
-                <html lang="es">
-                <body style="font-family: Arial, sans-serif; color: #1f2937; line-height: 1.5;">
-                  <p>Hola %s,</p>
-                  <h2 style="font-size: 18px; margin: 0 0 12px;">%s</h2>
-                  <p>%s</p>
-                  <p>
-                    <a href="%s" style="color: #0f766e;">Revisar en el sistema</a>
-                  </p>
-                  <p style="font-size: 12px; color: #6b7280;">
-                    Este es un mensaje automático del Sistema de Prácticas y Vinculación UNIBE.
-                  </p>
-                </body>
-                </html>
+        String contenido = """
+                <p>Hola %s,</p>
+                <h2 style="font-size: 18px; margin: 0 0 12px;">%s</h2>
+                <p>%s</p>
+                <p>
+                  <a href="%s" style="color: #0f766e;">Revisar en el sistema</a>
+                </p>
+                <p style="font-size: 12px; color: #6b7280;">
+                  Este es un mensaje automático del Sistema de Prácticas y Vinculación UNIBE.
+                </p>
                 """.formatted(nombre, titulo, mensaje, link);
+        return EmailPlantillaComponent.envolver(contenido, baseUrl);
     }
 
     private String mensaje(Notificacion notificacion) {

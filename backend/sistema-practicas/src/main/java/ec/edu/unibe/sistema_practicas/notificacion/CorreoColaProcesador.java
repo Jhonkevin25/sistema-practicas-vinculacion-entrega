@@ -65,7 +65,7 @@ public class CorreoColaProcesador {
                 helper.setFrom(new InternetAddress(from, fromName, StandardCharsets.UTF_8.name()));
                 helper.setTo(correo.getDestinatario());
                 helper.setSubject(correo.getAsunto());
-                helper.setText("Este correo requiere soporte HTML.", correo.getCuerpoHtml());
+                helper.setText(textoPlanoDesdeHtml(correo.getCuerpoHtml()), correo.getCuerpoHtml());
                 
                 mailSender.send(message);
 
@@ -89,5 +89,40 @@ public class CorreoColaProcesador {
                 break;
             }
         }
+    }
+
+    /**
+     * Genera un texto plano legible a partir del HTML del correo, como respaldo (fallback)
+     * para clientes de correo que no renderizan HTML. Tener siempre una parte de texto plano
+     * real (no un placeholder genérico) reduce el riesgo de que el correo sea marcado como
+     * spam. El HTML que generamos internamente es predecible, así que basta un stripping
+     * simple de etiquetas por regex, sin depender de una librería externa.
+     */
+    private String textoPlanoDesdeHtml(String cuerpoHtml) {
+        if (cuerpoHtml == null || cuerpoHtml.isBlank()) {
+            return "Este correo requiere un cliente compatible con HTML.";
+        }
+        String texto = cuerpoHtml
+                .replaceAll("(?is)<br\\s*/?>", "\n")
+                .replaceAll("(?is)</p>", "\n\n")
+                .replaceAll("(?is)</tr>", "\n")
+                .replaceAll("(?is)<[^>]+>", " ")
+                .replace("&nbsp;", " ")
+                .replace("&amp;", "&")
+                .replace("&lt;", "<")
+                .replace("&gt;", ">")
+                .replace("&quot;", "\"")
+                .replace("&#39;", "'")
+                .replace("&aacute;", "á")
+                .replace("&eacute;", "é")
+                .replace("&iacute;", "í")
+                .replace("&oacute;", "ó")
+                .replace("&uacute;", "ú")
+                .replace("&middot;", "-");
+
+        texto = texto.replaceAll("[ \\t]+", " ");
+        texto = texto.replaceAll(" *\\n *", "\n");
+        texto = texto.replaceAll("\\n{3,}", "\n\n");
+        return texto.trim();
     }
 }
