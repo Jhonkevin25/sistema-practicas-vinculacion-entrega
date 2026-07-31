@@ -5,17 +5,21 @@ import ec.edu.unibe.sistema_practicas.asistencia.AsistenciaRepository;
 import ec.edu.unibe.sistema_practicas.bitacora.Bitacora;
 import ec.edu.unibe.sistema_practicas.bitacora.BitacoraRepository;
 import ec.edu.unibe.sistema_practicas.coordinador.AlcanceCoordinador;
+import ec.edu.unibe.sistema_practicas.empresa.EmpresaRepository;
 import ec.edu.unibe.sistema_practicas.estudiante.Estudiante;
+import ec.edu.unibe.sistema_practicas.estudiante.EstudianteRepository;
 import ec.edu.unibe.sistema_practicas.ofertacupo.OfertaCuposEmpresa;
 import ec.edu.unibe.sistema_practicas.ofertacupo.OfertaCuposEmpresaCarrera;
 import ec.edu.unibe.sistema_practicas.ofertacupo.OfertaCuposEmpresaComponent;
 import ec.edu.unibe.sistema_practicas.ofertacupo.OfertaCuposEmpresaRepository;
 import ec.edu.unibe.sistema_practicas.practica.Practica;
 import ec.edu.unibe.sistema_practicas.practica.PracticaRepository;
+import ec.edu.unibe.sistema_practicas.practica.PracticaSpecification;
 import ec.edu.unibe.sistema_practicas.proyecto.Proyecto;
 import ec.edu.unibe.sistema_practicas.proyecto.ProyectoRepository;
 import ec.edu.unibe.sistema_practicas.vinculacion.Vinculacion;
 import ec.edu.unibe.sistema_practicas.vinculacion.VinculacionRepository;
+import ec.edu.unibe.sistema_practicas.vinculacion.VinculacionSpecification;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -51,6 +55,8 @@ public class ReporteController {
 
     private static final String PRACTICAS = "PRACTICAS";
     private static final String VINCULACION = "VINCULACION";
+    private static final List<String> ESTADOS_DISTRIBUCION =
+            List.of("en_curso", "pendiente", "completado", "retirado");
 
     private final PracticaRepository practicaRepository;
     private final VinculacionRepository vinculacionRepository;
@@ -60,6 +66,8 @@ public class ReporteController {
     private final BitacoraRepository bitacoraRepository;
     private final AsistenciaRepository asistenciaRepository;
     private final AlcanceCoordinador alcanceCoordinador;
+    private final EstudianteRepository estudianteRepository;
+    private final EmpresaRepository empresaRepository;
 
     @GetMapping("/asignaciones")
     public List<AsignacionReporte> asignaciones(Authentication authentication,
@@ -106,6 +114,69 @@ public class ReporteController {
                 .toList();
     }
 
+    // Perf: el overview del dashboard (ADMIN/COORDINADOR) solo necesita los 4
+    // totales para las tarjetas resumen. Antes el frontend traia
+    // estudiantes/empresas/practicas/vinculaciones COMPLETOS (findAll) solo
+    // para contar despues de filtrar en el cliente. Aqui se cuenta en BD
+    // (count/count(Specification)) aplicando el mismo alcance de carrera y
+    // tipo de coordinacion que ya usan los listados de PRACTICAS/VINCULACION.
+    @GetMapping("/conteos-overview")
+    public ConteosOverviewReporte conteosOverview(Authentication authentication) {
+        verificarGestionAcademica(authentication);
+
+        Set<String> carreras = alcanceCoordinador.carrerasVisibles(authentication).orElse(null);
+
+        long estudiantes = carreras == null
+                ? estudianteRepository.count()
+                : (carreras.isEmpty() ? 0 : estudianteRepository.countByCarreraIn(carreras));
+
+        long empresas = empresaRepository.count();
+
+        boolean practicasFueraDeAlcance = !alcanceCoordinador.procesoVisible(authentication, PRACTICAS);
+        long practicas = practicaRepository.count(
+                PracticaSpecification.build(null, null, null, null, null, carreras, practicasFueraDeAlcance));
+
+        boolean vinculacionFueraDeAlcance = !alcanceCoordinador.procesoVisible(authentication, VINCULACION);
+        long vinculaciones = vinculacionRepository.count(
+                VinculacionSpecification.build(null, null, null, null, null, carreras, vinculacionFueraDeAlcance));
+
+        return new ConteosOverviewReporte(estudiantes, empresas, practicas, vinculaciones);
+    }
+
+    // Perf: mismos datos que /asignaciones (respetando alcance de coordinador)
+    // pero agregados en el backend para el gráfico doughnut del overview del
+    // dashboard. Antes el frontend traía la lista completa de asignaciones
+    // solo para contarla por estado en el navegador.
+    @GetMapping("/distribucion-estados")
+    public List<DistribucionEstadoReporte> distribucionEstados(Authentication authentication) {
+        List<AsignacionReporte> filas = asignaciones(authentication, null, null, null, null);
+        Map<String, Long> conteoPorEstado = filas.stream()
+                .filter(f -> f.estado() != null)
+                .collect(Collectors.groupingBy(f -> f.estado().toLowerCase(Locale.ROOT), Collectors.counting()));
+        return ESTADOS_DISTRIBUCION.stream()
+                .map(estado -> new DistribucionEstadoReporte(estado, conteoPorEstado.getOrDefault(estado, 0L)))
+                .toList();
+    }
+
+    // Perf: mismos datos que /cupos (respetando alcance de coordinador) pero
+    // agregados por entidad, ordenados y recortados al top 8 en el backend
+    // para el gráfico de barras del overview. Antes el frontend traía la
+    // lista completa de cupos solo para sumarla por entidad en el navegador.
+    @GetMapping("/cupos-top-entidades")
+    public List<CupoEntidadReporte> cuposTopEntidades(Authentication authentication) {
+        List<CupoReporte> filas = cupos(authentication, null, null, null, null);
+        Map<String, Integer> disponiblesPorEntidad = new LinkedHashMap<>();
+        for (CupoReporte fila : filas) {
+            String entidad = fila.entidad() == null ? "Sin entidad" : fila.entidad();
+            disponiblesPorEntidad.merge(entidad, valor(fila.cuposDisponibles()), Integer::sum);
+        }
+        return disponiblesPorEntidad.entrySet().stream()
+                .map(e -> new CupoEntidadReporte(e.getKey(), e.getValue()))
+                .sorted(Comparator.comparingInt(CupoEntidadReporte::disponibles).reversed())
+                .limit(8)
+                .toList();
+    }
+
     @GetMapping("/cupos")
     public List<CupoReporte> cupos(Authentication authentication,
                                    @RequestParam(required = false) String periodo,
@@ -139,16 +210,23 @@ public class ReporteController {
         verificarGestionAcademica(authentication);
         String procesoNormalizado = normalizarProceso(proceso);
         Set<String> carreras = alcanceCoordinador.carrerasVisibles(authentication).orElse(null);
-        Map<Integer, List<Asistencia>> asistenciasPractica = asistenciaRepository.findAll().stream()
+        // Perf: antes se llamaba findAll() dos veces por repositorio (una
+        // para agrupar por práctica, otra para agrupar por vinculación),
+        // duplicando el escaneo completo de ASISTENCIAS/BITACORAS. Se trae
+        // cada tabla UNA sola vez y se agrupa en memoria en las dos formas
+        // necesarias a partir de esa misma lista.
+        List<Asistencia> todasAsistencias = asistenciaRepository.findAll();
+        Map<Integer, List<Asistencia>> asistenciasPractica = todasAsistencias.stream()
                 .filter(a -> a.getPractica() != null && a.getPractica().getId() != null)
                 .collect(Collectors.groupingBy(a -> a.getPractica().getId()));
-        Map<Integer, List<Asistencia>> asistenciasVinculacion = asistenciaRepository.findAll().stream()
+        Map<Integer, List<Asistencia>> asistenciasVinculacion = todasAsistencias.stream()
                 .filter(a -> a.getVinculacion() != null && a.getVinculacion().getId() != null)
                 .collect(Collectors.groupingBy(a -> a.getVinculacion().getId()));
-        Map<Integer, List<Bitacora>> bitacorasPractica = bitacoraRepository.findAll().stream()
+        List<Bitacora> todasBitacoras = bitacoraRepository.findAll();
+        Map<Integer, List<Bitacora>> bitacorasPractica = todasBitacoras.stream()
                 .filter(b -> b.getPractica() != null && b.getPractica().getId() != null)
                 .collect(Collectors.groupingBy(b -> b.getPractica().getId()));
-        Map<Integer, List<Bitacora>> bitacorasVinculacion = bitacoraRepository.findAll().stream()
+        Map<Integer, List<Bitacora>> bitacorasVinculacion = todasBitacoras.stream()
                 .filter(b -> b.getVinculacion() != null && b.getVinculacion().getId() != null)
                 .collect(Collectors.groupingBy(b -> b.getVinculacion().getId()));
         List<RiesgoReporte> filas = new ArrayList<>();
@@ -219,6 +297,19 @@ public class ReporteController {
     }
 
     // Fase 43: Endpoints de paginación (enfoque híbrido: agrupados en memoria pero paginados para el frontend)
+    // Perf (fase 53): estos 4 endpoints siguen trayendo todo el universo de
+    // prácticas/vinculaciones (y, en /riesgos, también bitácoras y
+    // asistencias completas) a memoria antes de recortar la página pedida.
+    // No es paginable a nivel de query SQL con Pageable sin duplicar la
+    // lógica de negocio (asignaciones/cierres cruzan practica+vinculacion en
+    // un único listado ordenado; cupos agrega ofertas/proyectos por
+    // carrera; riesgos calcula "sin actividad reciente", "avance bajo" y
+    // "observaciones sin resolver" cruzando bitácoras+asistencias de cada
+    // expediente, algo que hoy vive en Java, no en SQL). El arreglo aplicado
+    // aquí fue eliminar el N+1 real que sí existía (findAll() duplicado en
+    // /riesgos) para que "traer todo a memoria" sea más barato; migrar a
+    // paginación real de BD requeriría reescribir ese cálculo como
+    // Specification/@Query, lo cual excede el alcance de esta optimización.
     @GetMapping("/asignaciones/paginado")
     public ec.edu.unibe.sistema_practicas.paginacion.PaginaResponse<AsignacionReporte> asignacionesPaginadas(
             Authentication authentication,
@@ -644,4 +735,11 @@ public class ReporteController {
             String proceso, Integer expedienteId, Integer estudianteId, String estudiante, String carrera,
             String periodo, String entidad, String estado, Integer horasRequeridas, Integer horasCompletadas,
             Integer cumplimientoPorcentaje, LocalDateTime cerradoEn, Boolean cerrado, Boolean cumpleHoras) {}
+
+    public record ConteosOverviewReporte(
+            long estudiantes, long empresas, long practicas, long vinculaciones) {}
+
+    public record DistribucionEstadoReporte(String estado, long cantidad) {}
+
+    public record CupoEntidadReporte(String entidad, Integer disponibles) {}
 }

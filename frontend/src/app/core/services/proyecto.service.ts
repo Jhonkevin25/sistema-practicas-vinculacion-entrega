@@ -5,6 +5,7 @@ import { Observable, shareReplay } from 'rxjs';
 import { Fundacion } from './fundacion.service';
 import { Carrera } from './carrera.service';
 import { claveCacheSesion } from './cache-sesion';
+import { Paginado, paramsPaginado } from './paginacion';
 
 // NO_ESPECIFICADA solo existe en proyectos históricos migrados por la fase 39;
 // el backend exige una modalidad real al crear o editar.
@@ -62,9 +63,30 @@ export class ProyectoService {
     return this.cacheAll$;
   }
 
+  private cachePaginado$: Observable<Paginado<Proyecto>> | null = null;
+  private lastParamsKey = '';
+
+  // Fase de optimización: listado paginado con filtros resueltos en el backend
+  // (mismo patrón que FundacionService.getPaginado).
+  getPaginado(pagina: number, tamano: number,
+              filtros: { texto?: string; periodo?: string; estado?: string } = {},
+              sortBy?: string, sortDir?: string): Observable<Paginado<Proyecto>> {
+    const key = JSON.stringify({ sesion: claveCacheSesion(), pagina, tamano, filtros, sortBy, sortDir });
+    if (this.cachePaginado$ && this.lastParamsKey === key) {
+      return this.cachePaginado$;
+    }
+    this.lastParamsKey = key;
+    this.cachePaginado$ = this.http.get<Paginado<Proyecto>>(`${this.apiUrl}/paginado`, {
+      params: paramsPaginado(pagina, tamano, filtros, sortBy, sortDir)
+    }).pipe(shareReplay(1));
+    return this.cachePaginado$;
+  }
+
   clearCache(): void {
     this.cacheAll$ = null;
     this.lastPeriodo = '';
+    this.cachePaginado$ = null;
+    this.lastParamsKey = '';
   }
 
   getById(id: number): Observable<Proyecto> {

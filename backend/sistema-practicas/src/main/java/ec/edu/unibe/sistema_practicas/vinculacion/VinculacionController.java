@@ -50,6 +50,7 @@ import java.util.Optional;
 import java.util.Objects;
 import java.util.Set;
 import java.util.Locale;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/vinculacion")
@@ -195,9 +196,7 @@ public class VinculacionController {
         if (!alcanceCoordinador.procesoVisible(authentication, PROCESO)) {
             return List.of();
         }
-        return vinculacionesVisiblesGestion(authentication).stream()
-                .map(this::resumenSeguimiento)
-                .toList();
+        return resumenesSeguimiento(vinculacionesVisiblesGestion(authentication));
     }
 
     // Fase 43: paginación de seguimiento en base de datos
@@ -252,10 +251,8 @@ public class VinculacionController {
                 pagina, tamano, sort);
         
         org.springframework.data.domain.Page<Vinculacion> pageResult = vinculacionRepository.findAll(spec, pageable);
-        
-        List<SeguimientoVinculacionResponse> contenido = pageResult.getContent().stream()
-                .map(this::resumenSeguimiento)
-                .toList();
+
+        List<SeguimientoVinculacionResponse> contenido = resumenesSeguimiento(pageResult.getContent());
 
         return new PaginaResponse<>(
             contenido,
@@ -746,20 +743,48 @@ public class VinculacionController {
         }
     }
 
-    private SeguimientoVinculacionResponse resumenSeguimiento(Vinculacion vinculacion) {
-        List<Bitacora> bitacoras = vinculacion.getId() == null
-                ? List.of()
-                : bitacoraRepository.findByVinculacionId(vinculacion.getId());
-        List<Asistencia> asistencias = vinculacion.getId() == null
-                ? List.of()
-                : asistenciaRepository.findByVinculacionId(vinculacion.getId());
-        List<EvaluacionPracticaDetalle> evaluaciones = vinculacion.getId() == null
-                ? List.of()
-                : evaluacionRepository.findByVinculacionId(vinculacion.getId());
-        List<EncuestaSatisfaccion> encuestas = vinculacion.getId() == null
-                ? List.of()
-                : encuestaRepository.findByVinculacionId(vinculacion.getId());
+    // Fase 53 (perf): batch fetch para /seguimiento y /seguimiento/paginado.
+    // Antes: por cada vinculación de la lista se hacían 4 queries independientes
+    // (bitácoras, asistencias, evaluaciones, encuestas) dentro del stream.map,
+    // es decir 4*N queries para N vinculaciones. Ahora se hace UNA consulta por
+    // tipo de dato con IN (vinculacionIds) y se agrupa en memoria con
+    // Collectors.groupingBy, dejando el total en 4 queries sin importar N.
+    private List<SeguimientoVinculacionResponse> resumenesSeguimiento(List<Vinculacion> vinculaciones) {
+        List<Integer> ids = vinculaciones.stream()
+                .map(Vinculacion::getId)
+                .filter(Objects::nonNull)
+                .toList();
 
+        Map<Integer, List<Bitacora>> bitacorasPorVinculacion = ids.isEmpty()
+                ? Map.of()
+                : bitacoraRepository.findByVinculacionIdIn(ids).stream()
+                        .collect(Collectors.groupingBy(b -> b.getVinculacion().getId()));
+        Map<Integer, List<Asistencia>> asistenciasPorVinculacion = ids.isEmpty()
+                ? Map.of()
+                : asistenciaRepository.findByVinculacionIdIn(ids).stream()
+                        .collect(Collectors.groupingBy(a -> a.getVinculacion().getId()));
+        Map<Integer, List<EvaluacionPracticaDetalle>> evaluacionesPorVinculacion = ids.isEmpty()
+                ? Map.of()
+                : evaluacionRepository.findByVinculacionIdIn(ids).stream()
+                        .collect(Collectors.groupingBy(e -> e.getVinculacion().getId()));
+        Map<Integer, List<EncuestaSatisfaccion>> encuestasPorVinculacion = ids.isEmpty()
+                ? Map.of()
+                : encuestaRepository.findByVinculacionIdIn(ids).stream()
+                        .collect(Collectors.groupingBy(e -> e.getVinculacion().getId()));
+
+        return vinculaciones.stream()
+                .map(v -> resumenSeguimiento(v,
+                        bitacorasPorVinculacion.getOrDefault(v.getId(), List.of()),
+                        asistenciasPorVinculacion.getOrDefault(v.getId(), List.of()),
+                        evaluacionesPorVinculacion.getOrDefault(v.getId(), List.of()),
+                        encuestasPorVinculacion.getOrDefault(v.getId(), List.of())))
+                .toList();
+    }
+
+    private SeguimientoVinculacionResponse resumenSeguimiento(Vinculacion vinculacion, List<Bitacora> bitacoras,
+                                                                List<Asistencia> asistencias,
+                                                                List<EvaluacionPracticaDetalle> evaluaciones,
+                                                                List<EncuestaSatisfaccion> encuestas) {
         long bitacorasPendientes = bitacoras.stream()
                 .filter(b -> "pendiente".equalsIgnoreCase(b.getEstado()))
                 .count();

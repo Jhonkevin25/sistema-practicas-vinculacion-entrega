@@ -50,10 +50,11 @@ public class OfertaCuposEmpresaController {
                 ? ofertaRepository.findAll()
                 : ofertaRepository.findByPeriodoAcademico(periodoAcademico.trim());
         Optional<Set<Integer>> empresasVisibles = empresasVisibles(authentication);
-        return ofertas.stream()
+        List<OfertaCuposEmpresa> ofertasVisibles = ofertas.stream()
                 .filter(oferta -> empresasVisibles.isEmpty()
                         || empresasVisibles.get().contains(oferta.getEmpresa().getId()))
-                .map(ofertaComponent::enriquecer)
+                .toList();
+        return ofertaComponent.enriquecerTodas(ofertasVisibles).stream()
                 .sorted((a, b) -> a.getEmpresa().getNombre().compareToIgnoreCase(b.getEmpresa().getNombre()))
                 .toList();
     }

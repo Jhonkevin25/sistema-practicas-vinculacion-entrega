@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -13,6 +14,10 @@ public interface ProyectoRepository extends JpaRepository<Proyecto, Integer> {
     List<Proyecto> findByFundacionId(Integer fundacionId);
 
     List<Proyecto> findByFundacionIdAndPeriodo(Integer fundacionId, String periodo);
+
+    // Fase de optimización: variante batch para enriquecer varias ofertas de
+    // cupos de fundación con una sola consulta (evita N+1 en el listado).
+    List<Proyecto> findByFundacionIdInAndPeriodo(Collection<Integer> fundacionIds, String periodo);
 
     List<Proyecto> findByPeriodo(String periodo);
 

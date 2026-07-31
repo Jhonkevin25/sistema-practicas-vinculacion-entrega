@@ -151,7 +151,8 @@
 
     <!-- Table Proyectos -->
     @if (!loading()) {
-      <div class="bg-white border border-slate-200 rounded-xl overflow-x-auto shadow-sm">
+      <div class="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
+        <div class="overflow-x-auto">
         <table class="w-full min-w-[820px] text-left border-collapse text-xs">
           <thead>
             <tr class="border-b border-slate-200 text-slate-400 font-bold uppercase bg-slate-50">
@@ -197,9 +198,24 @@
                   </button>
                 </td>
               </tr>
+            } @empty {
+              <tr>
+                <td colspan="6" class="p-10 text-center text-slate-400 font-medium">
+                  No hay proyectos registrados.
+                </td>
+              </tr>
             }
           </tbody>
         </table>
+        </div>
+        <app-paginador
+          [pagina]="paginaProyectos()"
+          [totalPaginas]="totalPaginasProyectos()"
+          [totalElementos]="totalElementosProyectos()"
+          [tamano]="tamanoPagina"
+          [cargando]="isRefreshing()"
+          (cambiar)="cambiarPaginaProyectos($event)"
+        />
       </div>
     }
   </div>

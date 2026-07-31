@@ -10,6 +10,7 @@ import ec.edu.unibe.sistema_practicas.documento.DocEstudianteRepository;
 import ec.edu.unibe.sistema_practicas.empresa.Empresa;
 import ec.edu.unibe.sistema_practicas.estudiante.Estudiante;
 import ec.edu.unibe.sistema_practicas.estudiante.EstudianteRepository;
+import ec.edu.unibe.sistema_practicas.estudiante.EtapaAcademicaComponent;
 import ec.edu.unibe.sistema_practicas.notaacademica.NotaAcademicaRepository;
 import ec.edu.unibe.sistema_practicas.notificacion.NotificacionEmitter;
 import ec.edu.unibe.sistema_practicas.ofertacupo.OfertaCuposEmpresaComponent;
@@ -73,6 +74,7 @@ public class PostulacionMeritocraticaController {
     private final PeriodoAcademicoComponent periodoComponent;
     private final TutorAsignacionComponent tutorAsignacionComponent;
     private final ObjectMapper objectMapper;
+    private final EtapaAcademicaComponent etapaAcademicaComponent;
 
     @GetMapping
     public List<PostulacionMeritocratica> getAll(Authentication authentication,
@@ -123,7 +125,7 @@ public class PostulacionMeritocraticaController {
         validarVacantesParaEstudiante(postulacion, estudiante, authentication);
 
         // Regla: documentacion obligatoria completa antes de postular
-        validarDocumentosObligatorios(estudianteId);
+        validarDocumentosObligatorios(estudiante);
 
         // Regla: sin postulaciones duplicadas en proceso
         boolean enProceso = postulacionMeritocraticaRepository.findByEstudianteId(estudianteId).stream()
@@ -571,13 +573,27 @@ public class PostulacionMeritocraticaController {
         }
     }
 
-    private void validarDocumentosObligatorios(Integer estudianteId) {
+    private void validarDocumentosObligatorios(Estudiante estudiante) {
+        Integer estudianteId = estudiante.getId();
         Set<String> docs = documentoRepository.findByEstudianteIdAndProceso(estudianteId, "PRACTICAS").stream()
                 .filter(doc -> doc.getUrlArchivo() != null && !doc.getUrlArchivo().isBlank())
                 .filter(doc -> "aprobado".equals(doc.getEstado()))
                 .map(DocEstudiante::getTipoDocumento)
                 .collect(Collectors.toSet());
-        if (!docs.containsAll(Set.of("cv", "carta", "cedula"))) {
+        if (!docs.containsAll(Set.of("cv", "cedula"))) {
+            throw new IllegalArgumentException(
+                    "Tus documentos obligatorios de practicas deben estar aprobados antes de postular.");
+        }
+
+        // La carta de solicitud no se hereda de Practica I a Practica II: se
+        // exige una vigente para la etapa actual, o una fila legacy (etapa
+        // NULL) cargada antes de que existiera esta distincion.
+        String etapaActual = etapaAcademicaComponent.etapaPracticaActual(estudiante);
+        boolean cartaVigente = etapaActual == null
+                ? docs.contains("carta")
+                : documentoRepository.existsVigentePorEtapa(
+                        estudianteId, "carta", "PRACTICAS", etapaActual, "aprobado");
+        if (!cartaVigente) {
             throw new IllegalArgumentException(
                     "Tus documentos obligatorios de practicas deben estar aprobados antes de postular.");
         }

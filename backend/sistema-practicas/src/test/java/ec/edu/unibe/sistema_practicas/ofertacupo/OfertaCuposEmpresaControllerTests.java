@@ -53,7 +53,7 @@ class OfertaCuposEmpresaControllerTests {
         when(convenioVigenteComponent.empresasVisiblesPara(Set.of("Derecho")))
                 .thenReturn(Set.of(10));
         when(ofertaRepository.findAll()).thenReturn(List.of(visible, oculta));
-        when(ofertaComponent.enriquecer(visible)).thenReturn(visible);
+        when(ofertaComponent.enriquecerTodas(List.of(visible))).thenReturn(List.of(visible));
 
         assertEquals(List.of(visible), controller.getAll(null, coordinador));
     }

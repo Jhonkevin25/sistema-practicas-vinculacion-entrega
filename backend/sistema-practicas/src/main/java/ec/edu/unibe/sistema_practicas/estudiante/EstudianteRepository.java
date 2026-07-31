@@ -12,6 +12,7 @@ import java.util.Optional;
 
 public interface EstudianteRepository extends JpaRepository<Estudiante, Integer>, JpaSpecificationExecutor<Estudiante> {
     List<Estudiante> findByCarreraIn(Collection<String> carreras);
+    long countByCarreraIn(Collection<String> carreras);
     Optional<Estudiante> findByMatricula(String matricula);
     Optional<Estudiante> findByUsuarioEmail(String email);
     Optional<Estudiante> findByUsuarioId(Integer usuarioId);

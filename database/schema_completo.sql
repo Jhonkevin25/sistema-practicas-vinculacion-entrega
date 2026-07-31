@@ -587,8 +587,10 @@ CREATE TABLE IF NOT EXISTS BITACORAS (
     vinculacion_id      INT REFERENCES VINCULACION(id) ON DELETE CASCADE,
     parcial             INT NOT NULL CHECK (parcial IN (1, 2, 3)),
     fecha               DATE NOT NULL,
+    fecha_registro      DATE DEFAULT CURRENT_DATE,
     actividad           TEXT NOT NULL,
     horas               INT NOT NULL CHECK (horas BETWEEN 1 AND 24),
+    horas_extra         INT NOT NULL DEFAULT 0 CHECK (horas_extra >= 0),
     observaciones       TEXT,
     estado              VARCHAR(30) DEFAULT 'pendiente'
                         CHECK (estado IN ('pendiente', 'aprobada', 'rechazada', 'requiere_correccion')),
@@ -601,6 +603,11 @@ CREATE TABLE IF NOT EXISTS BITACORAS (
         OR (practica_id IS NULL AND vinculacion_id IS NOT NULL)
     )
 );
+-- Nota: fecha_registro y horas_extra ya incluyen la migracion fase53
+-- (database/migraciones/fase53_bitacora_horas_extra_fecha_registro.sql).
+-- En una base ya existente, fecha_registro debe recibir backfill
+-- (fecha_registro = fecha) para las filas creadas antes de fase53: ver el
+-- script de la migracion, que hace ese UPDATE explicito.
 
 CREATE TABLE IF NOT EXISTS ASISTENCIAS (
     id              SERIAL PRIMARY KEY,
@@ -777,6 +784,12 @@ CREATE INDEX IF NOT EXISTS idx_fechas_limite_periodo ON FECHAS_LIMITE_CALIFICACI
 CREATE UNIQUE INDEX IF NOT EXISTS uq_eval_detalle_practica_parcial ON EVALUACIONES_PRACTICAS_DETALLE(practica_id, parcial) WHERE practica_id IS NOT NULL;
 CREATE UNIQUE INDEX IF NOT EXISTS uq_eval_detalle_vinculacion_parcial ON EVALUACIONES_PRACTICAS_DETALLE(vinculacion_id, parcial) WHERE vinculacion_id IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_eval_detalle_vinculacion ON EVALUACIONES_PRACTICAS_DETALLE(vinculacion_id);
+-- Nota: idx_eval_detalle_practica ya incluye la migracion fase54
+-- (database/migraciones/fase54_indice_evaluaciones_practica_id.sql): agrega
+-- el indice equivalente sobre practica_id, que faltaba desde el schema
+-- original y agravaba el N+1 de findByPracticaId en el listado de
+-- seguimiento de practicas.
+CREATE INDEX IF NOT EXISTS idx_eval_detalle_practica ON EVALUACIONES_PRACTICAS_DETALLE(practica_id);
 CREATE UNIQUE INDEX IF NOT EXISTS uq_encuestas_practica_parcial ON ENCUESTAS_SATISFACCION(practica_id, parcial) WHERE practica_id IS NOT NULL;
 CREATE UNIQUE INDEX IF NOT EXISTS uq_encuestas_vinculacion_parcial ON ENCUESTAS_SATISFACCION(vinculacion_id, parcial) WHERE vinculacion_id IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_encuestas_estudiante ON ENCUESTAS_SATISFACCION(estudiante_id);
@@ -826,7 +839,7 @@ CREATE OR REPLACE FUNCTION fn_horas_aprobadas_practica(
     horas_requeridas_expediente INT
 )
 RETURNS INT AS $$
-    SELECT LEAST(horas_requeridas_expediente, COALESCE(SUM(b.horas), 0)::INT)
+    SELECT LEAST(horas_requeridas_expediente, COALESCE(SUM(b.horas + b.horas_extra), 0)::INT)
     FROM BITACORAS b
     WHERE b.practica_id = expediente_id AND b.estado = 'aprobada';
 $$ LANGUAGE sql STABLE;
@@ -836,7 +849,7 @@ CREATE OR REPLACE FUNCTION fn_horas_aprobadas_vinculacion(
     horas_requeridas_expediente INT
 )
 RETURNS INT AS $$
-    SELECT LEAST(horas_requeridas_expediente, COALESCE(SUM(b.horas), 0)::INT)
+    SELECT LEAST(horas_requeridas_expediente, COALESCE(SUM(b.horas + b.horas_extra), 0)::INT)
     FROM BITACORAS b
     WHERE b.vinculacion_id = expediente_id AND b.estado = 'aprobada';
 $$ LANGUAGE sql STABLE;
@@ -912,7 +925,7 @@ END;
 $$ LANGUAGE plpgsql;
 
 CREATE OR REPLACE TRIGGER trg_sincronizar_horas_bitacora
-    AFTER INSERT OR UPDATE OF horas, estado, practica_id, vinculacion_id OR DELETE
+    AFTER INSERT OR UPDATE OF horas, horas_extra, estado, practica_id, vinculacion_id OR DELETE
     ON BITACORAS
     FOR EACH ROW EXECUTE FUNCTION fn_sincronizar_horas_desde_bitacora();
 
@@ -3209,7 +3222,7 @@ CREATE OR REPLACE FUNCTION fn_horas_aprobadas_practica(
 RETURNS INT AS $$
     SELECT LEAST(
         horas_requeridas_expediente,
-        COALESCE(SUM(b.horas), 0)::INT
+        COALESCE(SUM(b.horas + b.horas_extra), 0)::INT
     )
     FROM BITACORAS b
     WHERE b.practica_id = expediente_id
@@ -3223,7 +3236,7 @@ CREATE OR REPLACE FUNCTION fn_horas_aprobadas_vinculacion(
 RETURNS INT AS $$
     SELECT LEAST(
         horas_requeridas_expediente,
-        COALESCE(SUM(b.horas), 0)::INT
+        COALESCE(SUM(b.horas + b.horas_extra), 0)::INT
     )
     FROM BITACORAS b
     WHERE b.vinculacion_id = expediente_id
@@ -3312,7 +3325,7 @@ $$ LANGUAGE plpgsql;
 
 DROP TRIGGER IF EXISTS trg_sincronizar_horas_bitacora ON BITACORAS;
 CREATE TRIGGER trg_sincronizar_horas_bitacora
-    AFTER INSERT OR UPDATE OF horas, estado, practica_id, vinculacion_id OR DELETE
+    AFTER INSERT OR UPDATE OF horas, horas_extra, estado, practica_id, vinculacion_id OR DELETE
     ON BITACORAS
     FOR EACH ROW
     EXECUTE FUNCTION fn_sincronizar_horas_desde_bitacora();

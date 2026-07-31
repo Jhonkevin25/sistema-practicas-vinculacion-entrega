@@ -108,6 +108,15 @@ export class ExpedienteService {
     return 'COMPLETADO';
   }
 
+  // Codigo de etapa usado por DOCS_ESTUDIANTE.etapa ('PRACTICA_1'/'PRACTICA_2')
+  // para distinguir los documentos de Practica I de los de Practica II.
+  // null cuando la etapa no aplica (Vinculacion o expediente completado).
+  etapaComoCodigo(etapa: EtapaAcademica): 'PRACTICA_1' | 'PRACTICA_2' | null {
+    if (etapa === 'Práctica I') return 'PRACTICA_1';
+    if (etapa === 'Práctica II') return 'PRACTICA_2';
+    return null;
+  }
+
   // Regla de exclusividad: hay un proceso activo (pendiente o en curso)
   hayActividadActiva(practicas: Practica[], vinculaciones: Vinculacion[]): boolean {
     return practicas.some(p => p.estado === 'en_curso' || p.estado === 'pendiente')

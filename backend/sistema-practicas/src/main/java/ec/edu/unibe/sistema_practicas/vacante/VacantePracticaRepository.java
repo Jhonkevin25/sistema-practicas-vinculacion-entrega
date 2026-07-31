@@ -19,6 +19,8 @@ public interface VacantePracticaRepository extends JpaRepository<VacantePractica
             Collection<String> carreras, String periodoAcademico);
     List<VacantePractica> findByEmpresaIdAndPeriodoAcademico(
             Integer empresaId, String periodoAcademico);
+    List<VacantePractica> findByEmpresaIdInAndPeriodoAcademico(
+            Collection<Integer> empresaIds, String periodoAcademico);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select v from VacantePractica v where v.id = :id")

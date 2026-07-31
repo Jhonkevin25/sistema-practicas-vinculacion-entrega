@@ -19,6 +19,9 @@ public interface VinculacionRepository extends JpaRepository<Vinculacion, Intege
     List<Vinculacion> findByTutorId(Integer tutorId);
     List<Vinculacion> findByEncargadoId(Integer encargadoId);
     List<Vinculacion> findByFundacionIdAndPeriodoAcademico(Integer fundacionId, String periodoAcademico);
+    // Fase de optimización: variante batch para enriquecer varias ofertas de
+    // cupos de fundación con una sola consulta (evita N+1 en el listado).
+    List<Vinculacion> findByFundacionIdInAndPeriodoAcademico(Collection<Integer> fundacionIds, String periodoAcademico);
     List<Vinculacion> findByProyectoId(Integer proyectoId);
     boolean existsByEstudianteIdAndTutorId(Integer estudianteId, Integer tutorId);
     long countByPeriodoAcademicoAndEstadoIn(String periodoAcademico, Collection<String> estados);

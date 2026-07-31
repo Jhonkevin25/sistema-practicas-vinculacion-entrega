@@ -495,6 +495,12 @@ class SecurityMatrixTests {
            .andExpect(status().isOk());
         mvc.perform(get("/api/reportes/cierres").with(user("c").roles("COORDINADOR")))
            .andExpect(status().isOk());
+        mvc.perform(get("/api/reportes/conteos-overview").with(user("c").roles("COORDINADOR")))
+           .andExpect(status().isOk());
+        mvc.perform(get("/api/reportes/distribucion-estados").with(user("c").roles("COORDINADOR")))
+           .andExpect(status().isOk());
+        mvc.perform(get("/api/reportes/cupos-top-entidades").with(user("c").roles("COORDINADOR")))
+           .andExpect(status().isOk());
         mvc.perform(get("/api/reportes/exportar?tipo=ASIGNACIONES")
                 .with(user("c").roles("COORDINADOR")))
            .andExpect(status().isOk());
@@ -565,6 +571,12 @@ class SecurityMatrixTests {
     @Test
     void admin_consulta_reportes() throws Exception {
         mvc.perform(get("/api/reportes/asignaciones").with(user("a").roles("ADMIN")))
+           .andExpect(status().isOk());
+        mvc.perform(get("/api/reportes/conteos-overview").with(user("a").roles("ADMIN")))
+           .andExpect(status().isOk());
+        mvc.perform(get("/api/reportes/distribucion-estados").with(user("a").roles("ADMIN")))
+           .andExpect(status().isOk());
+        mvc.perform(get("/api/reportes/cupos-top-entidades").with(user("a").roles("ADMIN")))
            .andExpect(status().isOk());
         mvc.perform(get("/api/reportes/exportar?tipo=CIERRES").with(user("a").roles("ADMIN")))
            .andExpect(status().isOk());

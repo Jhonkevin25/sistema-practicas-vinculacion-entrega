@@ -1,6 +1,6 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
-import { Observable } from 'rxjs';
+import { Observable, shareReplay } from 'rxjs';
 import { Paginado, paramsPaginado } from './paginacion';
 
 export type TipoReporte = 'ASIGNACIONES' | 'CUPOS' | 'RIESGOS' | 'CIERRES';
@@ -58,6 +58,23 @@ export interface RiesgoReporte {
   motivos: string[];
 }
 
+export interface ConteosOverview {
+  estudiantes: number;
+  empresas: number;
+  practicas: number;
+  vinculaciones: number;
+}
+
+export interface DistribucionEstadoReporte {
+  estado: string;
+  cantidad: number;
+}
+
+export interface CupoEntidadReporte {
+  entidad: string;
+  disponibles: number;
+}
+
 export interface CierreReporte {
   proceso: string;
   expedienteId: number;
@@ -79,6 +96,24 @@ export interface CierreReporte {
 export class ReporteService {
   private readonly http = inject(HttpClient);
   private readonly apiUrl = '/api/reportes';
+
+  // Cache con vencimiento corto (no invalidacion manual): estas 3 respuestas
+  // dependen de escrituras dispersas en todo el sistema (bitacoras,
+  // asistencias, evaluaciones, empresas...), no hay un solo punto de
+  // "clearCache()" razonable como en Practica/Vinculacion/Empresa. Un TTL
+  // corto evita releer todo al ir y volver de Inicio sin arriesgar datos
+  // desactualizados por mucho tiempo.
+  private readonly OVERVIEW_TTL_MS = 60_000;
+  private cacheConteosOverview$: Observable<ConteosOverview> | null = null;
+  private cacheConteosOverviewAt = 0;
+  private cacheDistribucionEstados$: Observable<DistribucionEstadoReporte[]> | null = null;
+  private cacheDistribucionEstadosAt = 0;
+  private cacheCuposTopEntidades$: Observable<CupoEntidadReporte[]> | null = null;
+  private cacheCuposTopEntidadesAt = 0;
+
+  private vigente(desde: number): boolean {
+    return Date.now() - desde < this.OVERVIEW_TTL_MS;
+  }
 
   asignaciones(filtros: FiltrosReporte): Observable<AsignacionReporte[]> {
     return this.http.get<AsignacionReporte[]>(`${this.apiUrl}/asignaciones`, { params: this.params(filtros) });
@@ -118,6 +153,37 @@ export class ReporteService {
     let httpParams = this.params(filtros);
     httpParams = httpParams.set('pagina', pagina.toString()).set('tamano', tamano.toString());
     return this.http.get<Paginado<CierreReporte>>(`${this.apiUrl}/cierres/paginado`, { params: httpParams });
+  }
+
+  // Conteos ya agregados en el backend (respeta el alcance del coordinador)
+  // para la tarjeta de estadísticas de Inicio, sin traer listados completos.
+  // Cacheado (ver OVERVIEW_TTL_MS) para que ir y volver de Inicio no vuelva
+  // a pegarle a la red cada vez.
+  getConteosOverview(): Observable<ConteosOverview> {
+    if (!this.cacheConteosOverview$ || !this.vigente(this.cacheConteosOverviewAt)) {
+      this.cacheConteosOverviewAt = Date.now();
+      this.cacheConteosOverview$ = this.http.get<ConteosOverview>(`${this.apiUrl}/conteos-overview`).pipe(shareReplay(1));
+    }
+    return this.cacheConteosOverview$;
+  }
+
+  // Distribución por estado (asignaciones) y top de cupos por entidad, ya
+  // agregados en el backend (respeta el alcance del coordinador) para los
+  // gráficos de Inicio, sin traer los listados completos. Mismo cacheo corto.
+  getDistribucionEstados(): Observable<DistribucionEstadoReporte[]> {
+    if (!this.cacheDistribucionEstados$ || !this.vigente(this.cacheDistribucionEstadosAt)) {
+      this.cacheDistribucionEstadosAt = Date.now();
+      this.cacheDistribucionEstados$ = this.http.get<DistribucionEstadoReporte[]>(`${this.apiUrl}/distribucion-estados`).pipe(shareReplay(1));
+    }
+    return this.cacheDistribucionEstados$;
+  }
+
+  getCuposTopEntidades(): Observable<CupoEntidadReporte[]> {
+    if (!this.cacheCuposTopEntidades$ || !this.vigente(this.cacheCuposTopEntidadesAt)) {
+      this.cacheCuposTopEntidadesAt = Date.now();
+      this.cacheCuposTopEntidades$ = this.http.get<CupoEntidadReporte[]>(`${this.apiUrl}/cupos-top-entidades`).pipe(shareReplay(1));
+    }
+    return this.cacheCuposTopEntidades$;
   }
 
   exportar(tipo: TipoReporte, filtros: FiltrosReporte): Observable<Blob> {

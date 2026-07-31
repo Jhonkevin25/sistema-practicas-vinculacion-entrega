@@ -50,6 +50,7 @@ import java.util.Optional;
 import java.util.Objects;
 import java.util.Set;
 import java.util.Locale;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/practicas")
@@ -194,9 +195,7 @@ public class PracticaController {
         if (!alcanceCoordinador.procesoVisible(authentication, PROCESO)) {
             return List.of();
         }
-        return practicasVisiblesGestion(authentication).stream()
-                .map(this::resumenSeguimiento)
-                .toList();
+        return resumenesSeguimiento(practicasVisiblesGestion(authentication));
     }
 
     // Fase 43: paginación de seguimiento en base de datos
@@ -251,10 +250,8 @@ public class PracticaController {
                 pagina, tamano, sort);
         
         org.springframework.data.domain.Page<Practica> pageResult = practicaRepository.findAll(spec, pageable);
-        
-        List<SeguimientoPracticaResponse> contenido = pageResult.getContent().stream()
-                .map(this::resumenSeguimiento)
-                .toList();
+
+        List<SeguimientoPracticaResponse> contenido = resumenesSeguimiento(pageResult.getContent());
 
         return new PaginaResponse<>(
             contenido,
@@ -760,20 +757,48 @@ public class PracticaController {
         throw new ResponseStatusException(HttpStatus.FORBIDDEN, "No puedes asignar cupos de esta vacante.");
     }
 
-    private SeguimientoPracticaResponse resumenSeguimiento(Practica practica) {
-        List<Bitacora> bitacoras = practica.getId() == null
-                ? List.of()
-                : bitacoraRepository.findByPracticaId(practica.getId());
-        List<Asistencia> asistencias = practica.getId() == null
-                ? List.of()
-                : asistenciaRepository.findByPracticaId(practica.getId());
-        List<EvaluacionPracticaDetalle> evaluaciones = practica.getId() == null
-                ? List.of()
-                : evaluacionRepository.findByPracticaId(practica.getId());
-        List<EncuestaSatisfaccion> encuestas = practica.getId() == null
-                ? List.of()
-                : encuestaRepository.findByPracticaId(practica.getId());
+    // Fase 53 (perf): batch fetch para /seguimiento y /seguimiento/paginado.
+    // Antes: por cada práctica de la lista se hacían 4 queries independientes
+    // (bitácoras, asistencias, evaluaciones, encuestas) dentro del stream.map,
+    // es decir 4*N queries para N prácticas. Ahora se hace UNA consulta por
+    // tipo de dato con IN (practicaIds) y se agrupa en memoria con
+    // Collectors.groupingBy, dejando el total en 4 queries sin importar N.
+    private List<SeguimientoPracticaResponse> resumenesSeguimiento(List<Practica> practicas) {
+        List<Integer> ids = practicas.stream()
+                .map(Practica::getId)
+                .filter(Objects::nonNull)
+                .toList();
 
+        Map<Integer, List<Bitacora>> bitacorasPorPractica = ids.isEmpty()
+                ? Map.of()
+                : bitacoraRepository.findByPracticaIdIn(ids).stream()
+                        .collect(Collectors.groupingBy(b -> b.getPractica().getId()));
+        Map<Integer, List<Asistencia>> asistenciasPorPractica = ids.isEmpty()
+                ? Map.of()
+                : asistenciaRepository.findByPracticaIdIn(ids).stream()
+                        .collect(Collectors.groupingBy(a -> a.getPractica().getId()));
+        Map<Integer, List<EvaluacionPracticaDetalle>> evaluacionesPorPractica = ids.isEmpty()
+                ? Map.of()
+                : evaluacionRepository.findByPracticaIdIn(ids).stream()
+                        .collect(Collectors.groupingBy(e -> e.getPractica().getId()));
+        Map<Integer, List<EncuestaSatisfaccion>> encuestasPorPractica = ids.isEmpty()
+                ? Map.of()
+                : encuestaRepository.findByPracticaIdIn(ids).stream()
+                        .collect(Collectors.groupingBy(e -> e.getPractica().getId()));
+
+        return practicas.stream()
+                .map(p -> resumenSeguimiento(p,
+                        bitacorasPorPractica.getOrDefault(p.getId(), List.of()),
+                        asistenciasPorPractica.getOrDefault(p.getId(), List.of()),
+                        evaluacionesPorPractica.getOrDefault(p.getId(), List.of()),
+                        encuestasPorPractica.getOrDefault(p.getId(), List.of())))
+                .toList();
+    }
+
+    private SeguimientoPracticaResponse resumenSeguimiento(Practica practica, List<Bitacora> bitacoras,
+                                                             List<Asistencia> asistencias,
+                                                             List<EvaluacionPracticaDetalle> evaluaciones,
+                                                             List<EncuestaSatisfaccion> encuestas) {
         long bitacorasPendientes = bitacoras.stream()
                 .filter(b -> "pendiente".equalsIgnoreCase(b.getEstado()))
                 .count();

@@ -19,4 +19,8 @@ public interface EvaluacionPracticaDetalleRepository extends JpaRepository<Evalu
     List<EvaluacionPracticaDetalle> findByVinculacionEstudianteId(Integer estudianteId);
     List<EvaluacionPracticaDetalle> findByVinculacionEstudianteCarreraIn(Collection<String> carreras);
     List<EvaluacionPracticaDetalle> findByVinculacionTutorId(Integer tutorId);
+    // Batch fetch usado por el seguimiento: una sola consulta con IN en vez
+    // de una por expediente.
+    List<EvaluacionPracticaDetalle> findByPracticaIdIn(Collection<Integer> practicaIds);
+    List<EvaluacionPracticaDetalle> findByVinculacionIdIn(Collection<Integer> vinculacionIds);
 }

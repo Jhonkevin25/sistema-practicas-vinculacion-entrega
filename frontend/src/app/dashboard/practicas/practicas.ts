@@ -291,7 +291,7 @@ export class PracticasComponent {
   procesandoBitacoraId = signal<number | null>(null);
   bitacoraEnCorreccion = signal<Bitacora | null>(null);
   guardandoBitacora = signal(false);
-  newBitacora = { fecha: '', actividad: '', horas: 4, parcial: 1 as 1 | 2 | 3, observaciones: '' };
+  newBitacora = { fecha: '', actividad: '', horas: 4, horasExtra: 0, parcial: 1 as 1 | 2 | 3, observaciones: '' };
 
   asistencias = signal<Asistencia[]>([]);
 
@@ -428,7 +428,10 @@ export class PracticasComponent {
       empresas: esTutor ? of([] as Empresa[]) : this.empresaService.getAll(),
       estudiantes: this.expediente.estudiantesSegunRol(user.rol),
       usuarios: esGestion ? this.expediente.usuariosSegunRol(user.rol) : of([] as Usuario[]),
-      practicas: this.expediente.practicasSegunRol(user.rol),
+      // ADMIN/COORDINADOR obtienen su listado con cargarPaginaLista() (paginado
+      // en BD); pedir aquí practicasSegunRol() para ellos traía TODAS las
+      // prácticas (getAll sin paginar) solo para descartar el resultado abajo.
+      practicas: esGestion ? of([] as Practica[]) : this.expediente.practicasSegunRol(user.rol),
       configuraciones: esTutor ? of([]) : this.configuracionService.getByTipo('PRACTICAS'),
       vacantes: esTutor ? of([] as Vacante[]) : this.vacanteService.getAll(this.expediente.periodoActual()),
       postulaciones: this.expediente.postulacionesPracticasSegunRol(user.rol),
@@ -697,6 +700,12 @@ export class PracticasComponent {
   // Etapa academica REAL del estudiante, derivada de su expediente
   etapaEstudiante(): EtapaAcademica {
     return this.expediente.etapaDe(this.practicas(), this.misVinculaciones());
+  }
+
+  // Codigo de etapa ('PRACTICA_1'/'PRACTICA_2') usado para distinguir la
+  // carta/carta_aceptacion vigente de la de una etapa anterior ya cerrada.
+  etapaEstudianteCodigo(): 'PRACTICA_1' | 'PRACTICA_2' | null {
+    return this.expediente.etapaComoCodigo(this.etapaEstudiante());
   }
 
   // Regla de exclusividad: no se puede postular con un proceso activo
@@ -1010,9 +1019,14 @@ export class PracticasComponent {
     this.cargarPaginaSeguimiento();
   }
 
+  private filtroSeguimientoDebounce?: ReturnType<typeof setTimeout>;
+
   filtrarSeguimiento(): void {
-    this.paginaSeguimiento.set(0);
-    this.cargarPaginaSeguimiento();
+    if (this.filtroSeguimientoDebounce) clearTimeout(this.filtroSeguimientoDebounce);
+    this.filtroSeguimientoDebounce = setTimeout(() => {
+      this.paginaSeguimiento.set(0);
+      this.cargarPaginaSeguimiento();
+    }, 400);
   }
 
   // El seguimiento paginado es un DTO plano (solo trae practicaId); para el
@@ -1233,25 +1247,37 @@ export class PracticasComponent {
 
   private aplicarDocumentos(documentos: DocEstudiante[]): void {
     this.documentosDetalle.set(documentos);
-    const tipos = new Set(documentos
-      .filter(doc => !!doc.urlArchivo && doc.estado === 'aprobado')
-      .map(doc => doc.tipoDocumento));
-    this.cvCargado.set(tipos.has('cv'));
-    this.cartaCargada.set(tipos.has('carta'));
-    this.cedulaCargada.set(tipos.has('cedula'));
-    this.cartaAceptacionCargada.set(tipos.has('carta_aceptacion'));
+    const aprobado = (tipo: TipoDocumento) => this.documentoVigente(tipo)?.estado === 'aprobado';
+    this.cvCargado.set(aprobado('cv'));
+    this.cartaCargada.set(aprobado('carta'));
+    this.cedulaCargada.set(aprobado('cedula'));
+    this.cartaAceptacionCargada.set(aprobado('carta_aceptacion'));
+  }
+
+  // La carta de solicitud y la carta de aceptacion se guardan bajo el mismo
+  // tipoDocumento en cada practica (I y II); si el documento encontrado
+  // quedo etiquetado con una etapa distinta a la actual, se trata como no
+  // subido para esta etapa (el estudiante debe volver a cargarlo).
+  private documentoVigente(type: TipoDocumento): DocEstudiante | undefined {
+    const doc = this.documentosDetalle().find(item => item.tipoDocumento === type);
+    if (!doc) return undefined;
+    const requiereEtapaVigente = type === 'carta' || type === 'carta_aceptacion';
+    if (requiereEtapaVigente && doc.etapa && doc.etapa !== this.etapaEstudianteCodigo()) {
+      return undefined;
+    }
+    return doc;
   }
 
   documentoTieneArchivo(type: TipoDocumento): boolean {
-    return this.documentosDetalle().some(doc => doc.tipoDocumento === type && !!doc.urlArchivo);
+    return !!this.documentoVigente(type)?.urlArchivo;
   }
 
   estadoDocumento(type: TipoDocumento): string {
-    return this.documentosDetalle().find(doc => doc.tipoDocumento === type)?.estado || 'pendiente';
+    return this.documentoVigente(type)?.estado || 'pendiente';
   }
 
   observacionDocumento(type: TipoDocumento): string {
-    return this.documentosDetalle().find(doc => doc.tipoDocumento === type)?.observacion || '';
+    return this.documentoVigente(type)?.observacion || '';
   }
 
   estadoDocumentoTexto(type: TipoDocumento): string {
@@ -1279,8 +1305,8 @@ export class PracticasComponent {
   }
 
   verDocumento(type: TipoDocumento): void {
-    const doc = this.documentosDetalle().find(item => item.tipoDocumento === type && !!item.urlArchivo);
-    if (!doc?.id) {
+    const doc = this.documentoVigente(type);
+    if (!doc?.id || !doc.urlArchivo) {
       this.toastService.warning('Primero sube el archivo del documento.');
       return;
     }
@@ -1957,6 +1983,7 @@ export class PracticasComponent {
       fecha: this.newBitacora.fecha,
       actividad: this.newBitacora.actividad,
       horas: this.newBitacora.horas,
+      horasExtra: this.newBitacora.horasExtra || 0,
       observaciones: this.newBitacora.observaciones,
       estado: 'pendiente'
     };
@@ -1967,7 +1994,7 @@ export class PracticasComponent {
     ).subscribe({
       next: (creada) => {
         this.bitacoras.set([...this.bitacoras(), creada]);
-        this.newBitacora = { fecha: '', actividad: '', horas: 4, parcial: 1, observaciones: '' };
+        this.newBitacora = { fecha: '', actividad: '', horas: 4, horasExtra: 0, parcial: 1, observaciones: '' };
         this.toastService.success('Bitácora enviada para aprobación del tutor.');
       },
       error: (err) => this.toastService.error(this.errorMsg(err, 'No se pudo registrar la bitácora.'))
@@ -1981,6 +2008,7 @@ export class PracticasComponent {
       fecha: bitacora.fecha,
       actividad: bitacora.actividad,
       horas: bitacora.horas,
+      horasExtra: bitacora.horasExtra || 0,
       parcial: bitacora.parcial,
       observaciones: bitacora.observaciones || ''
     };
@@ -1992,7 +2020,12 @@ export class PracticasComponent {
 
   cancelarCorreccionBitacora(): void {
     this.bitacoraEnCorreccion.set(null);
-    this.newBitacora = { fecha: '', actividad: '', horas: 4, parcial: 1, observaciones: '' };
+    this.newBitacora = { fecha: '', actividad: '', horas: 4, horasExtra: 0, parcial: 1, observaciones: '' };
+  }
+
+  // Aviso informativo: la bitácora se registró en una fecha distinta a la de la actividad.
+  bitacoraFueraDeFecha(bitacora: Bitacora): boolean {
+    return !!bitacora.fechaRegistro && bitacora.fechaRegistro !== bitacora.fecha;
   }
 
   // Student Pertinencia Likert Survey
@@ -2283,38 +2316,36 @@ export class PracticasComponent {
 
   openSeguimientoModal(prac: Practica): void {
     this.encuestasSeguimiento.set([]);
-    this.evaluacionService.getEncuestasByPractica(prac.id!).subscribe({
-      next: encuestas => this.encuestasSeguimiento.set(encuestas),
-      error: () => this.encuestasSeguimiento.set([])
-    });
     this.comentariosCoordinacionSeguimiento.set([]);
-    this.notaCoordinacionService.getByEstudiante(prac.estudiante.id!).subscribe({
-      next: notas => this.comentariosCoordinacionSeguimiento.set(
-        notas.filter(n => n.practica?.id === prac.id)),
-      error: () => this.comentariosCoordinacionSeguimiento.set([])
-    });
-    if (['ADMIN', 'COORDINADOR'].includes(this.userRole())) {
-      forkJoin({
-        bits: this.bitacoraService.getByEstudiante(prac.estudiante.id!),
-        asis: this.asistenciaService.getByPractica(prac.id!)
-      }).subscribe(({ bits, asis }) => {
-        // Only keep bitacoras that belong to this practica
-        const bitsPractica = bits.filter(b => b.practica?.id === prac.id);
-        
-        // Merge with existing caches to avoid duplicates
-        const existingBits = this.bitacoras().filter(b => b.practica?.id !== prac.id);
-        const existingAsis = this.asistencias().filter(a => a.practica?.id !== prac.id);
-        
-        this.bitacoras.set([...existingBits, ...bitsPractica]);
-        this.asistencias.set([...existingAsis, ...asis]);
-        
+    const consultaGestion = ['ADMIN', 'COORDINADOR'].includes(this.userRole());
+    forkJoin({
+      encuestas: this.evaluacionService.getEncuestasByPractica(prac.id!),
+      notas: this.notaCoordinacionService.getByEstudiante(prac.estudiante.id!),
+      bits: consultaGestion ? this.bitacoraService.getByEstudiante(prac.estudiante.id!) : of([] as Bitacora[]),
+      asis: consultaGestion ? this.asistenciaService.getByPractica(prac.id!) : of([] as Asistencia[])
+    }).subscribe({
+      next: ({ encuestas, notas, bits, asis }) => {
+        this.encuestasSeguimiento.set(encuestas);
+        this.comentariosCoordinacionSeguimiento.set(
+          notas.filter(n => n.practica?.id === prac.id));
+        if (consultaGestion) {
+          // Only keep bitacoras that belong to this practica
+          const bitsPractica = bits.filter(b => b.practica?.id === prac.id);
+
+          // Merge with existing caches to avoid duplicates
+          const existingBits = this.bitacoras().filter(b => b.practica?.id !== prac.id);
+          const existingAsis = this.asistencias().filter(a => a.practica?.id !== prac.id);
+
+          this.bitacoras.set([...existingBits, ...bitsPractica]);
+          this.asistencias.set([...existingAsis, ...asis]);
+        }
         this.selectedPracForSeguimiento.set(prac);
         this.showSeguimientoModal.set(true);
-      });
-    } else {
-      this.selectedPracForSeguimiento.set(prac);
-      this.showSeguimientoModal.set(true);
-    }
+      },
+      error: (err) => {
+        this.toastService.error(err?.error?.error || 'No se pudo cargar el seguimiento del expediente.');
+      }
+    });
   }
 
   closeSeguimientoModal(): void {

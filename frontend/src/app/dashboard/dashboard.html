@@ -10,14 +10,10 @@
   >
     <div>
       <!-- Brand Logo con Azul UNIBE -->
-      <div class="p-5 min-h-[92px] border-b border-white/10 flex items-center gap-3 bg-unibe-blue text-white relative">
+      <div class="p-5 min-h-[92px] border-b border-white/10 flex items-center justify-center bg-unibe-blue relative">
         <div class="absolute inset-x-0 bottom-0 h-1 bg-unibe-gold"></div>
-        <img src="/image/logo.png" alt="Universidad Iberoamericana del Ecuador" class="w-14 h-14 object-contain shrink-0" />
-        <div class="min-w-0">
-          <h2 class="text-xl font-bold tracking-wider">PRAVI</h2>
-          <p class="text-[11px] text-white/75 font-medium leading-tight mt-1">Universidad Iberoamericana del Ecuador</p>
-        </div>
-        <button type="button" (click)="closeSidebar()" title="Cerrar menú" class="ml-auto p-2 text-white/80 hover:text-white hover:bg-white/10 rounded-lg lg:hidden" aria-label="Cerrar menú">
+        <img src="/image/pravi-blanco.png" alt="PRAVI" class="h-14 w-auto object-contain" />
+        <button type="button" (click)="closeSidebar()" title="Cerrar menú" class="absolute right-3 top-1/2 -translate-y-1/2 p-2 text-white/80 hover:text-white hover:bg-white/10 rounded-lg lg:hidden" aria-label="Cerrar menú">
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" /></svg>
         </button>
       </div>

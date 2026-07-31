@@ -13,6 +13,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Component
 @RequiredArgsConstructor
@@ -72,6 +74,50 @@ public class OfertaCuposFundacionComponent {
         }
         Compromisos compromisos = compromisos(
                 oferta.getFundacion().getId(), oferta.getPeriodoAcademico(), null);
+        return aplicar(oferta, compromisos);
+    }
+
+    // Fase de optimización: enriquece un lote de ofertas con una sola consulta batch
+    // de proyectos y una sola de vinculaciones por periodo (en vez de 2 queries por oferta).
+    public List<OfertaCuposFundacion> enriquecerTodas(List<OfertaCuposFundacion> ofertas) {
+        List<OfertaCuposFundacion> validas = ofertas.stream()
+                .filter(oferta -> oferta != null && oferta.getFundacion() != null
+                        && oferta.getFundacion().getId() != null)
+                .toList();
+        if (validas.isEmpty()) {
+            return ofertas;
+        }
+
+        Map<String, List<OfertaCuposFundacion>> ofertasPorPeriodo = validas.stream()
+                .collect(Collectors.groupingBy(OfertaCuposFundacion::getPeriodoAcademico));
+
+        for (Map.Entry<String, List<OfertaCuposFundacion>> entry : ofertasPorPeriodo.entrySet()) {
+            String periodo = entry.getKey();
+            List<OfertaCuposFundacion> ofertasDelPeriodo = entry.getValue();
+            Set<Integer> fundacionIds = ofertasDelPeriodo.stream()
+                    .map(oferta -> oferta.getFundacion().getId())
+                    .collect(Collectors.toSet());
+
+            Map<Integer, List<Proyecto>> proyectosPorFundacion = proyectoRepository
+                    .findByFundacionIdInAndPeriodo(fundacionIds, periodo).stream()
+                    .collect(Collectors.groupingBy(proyecto -> proyecto.getFundacion().getId()));
+            Map<Integer, List<Vinculacion>> vinculacionesPorFundacion = vinculacionRepository
+                    .findByFundacionIdInAndPeriodoAcademico(fundacionIds, periodo).stream()
+                    .collect(Collectors.groupingBy(vinculacion -> vinculacion.getFundacion().getId()));
+
+            for (OfertaCuposFundacion oferta : ofertasDelPeriodo) {
+                Integer fundacionId = oferta.getFundacion().getId();
+                Compromisos compromisos = calcularCompromisos(
+                        proyectosPorFundacion.getOrDefault(fundacionId, List.of()),
+                        vinculacionesPorFundacion.getOrDefault(fundacionId, List.of()),
+                        null);
+                aplicar(oferta, compromisos);
+            }
+        }
+        return ofertas;
+    }
+
+    private OfertaCuposFundacion aplicar(OfertaCuposFundacion oferta, Compromisos compromisos) {
         oferta.setCuposReservados(compromisos.reservadosTotales());
         oferta.setCuposOcupados(compromisos.ocupadosTotales());
         oferta.setCuposDisponibles(Math.max(0,
@@ -137,11 +183,22 @@ public class OfertaCuposFundacionComponent {
     }
 
     private Compromisos compromisos(Integer fundacionId, String periodo, Integer proyectoExcluidoId) {
-        List<Proyecto> proyectos = proyectoRepository.findByFundacionIdAndPeriodo(fundacionId, periodo).stream()
+        List<Proyecto> proyectos = proyectoRepository.findByFundacionIdAndPeriodo(fundacionId, periodo);
+        List<Vinculacion> vinculaciones = vinculacionRepository
+                .findByFundacionIdAndPeriodoAcademico(fundacionId, periodo);
+        return calcularCompromisos(proyectos, vinculaciones, proyectoExcluidoId);
+    }
+
+    // Fase de optimización: separado de compromisos() para poder recibir listas
+    // ya cargadas en batch (enriquecerTodas) en vez de consultar por fundación.
+    private Compromisos calcularCompromisos(
+            List<Proyecto> proyectosFundacion,
+            List<Vinculacion> vinculacionesFundacion,
+            Integer proyectoExcluidoId) {
+        List<Proyecto> proyectos = proyectosFundacion.stream()
                 .filter(proyecto -> proyectoExcluidoId == null || !proyectoExcluidoId.equals(proyecto.getId()))
                 .toList();
-        List<Vinculacion> vinculaciones = vinculacionRepository
-                .findByFundacionIdAndPeriodoAcademico(fundacionId, periodo).stream()
+        List<Vinculacion> vinculaciones = vinculacionesFundacion.stream()
                 .filter(vinculacion -> proyectoExcluidoId == null
                         || vinculacion.getProyecto() == null
                         || !proyectoExcluidoId.equals(vinculacion.getProyecto().getId()))

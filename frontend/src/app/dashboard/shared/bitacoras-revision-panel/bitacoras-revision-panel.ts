@@ -144,4 +144,9 @@ export class BitacorasRevisionPanelComponent {
       return asistencia.estudiante?.id != null && asistencia.estudiante.id === bitacora.estudiante?.id;
     });
   }
+
+  // Aviso informativo: la bitácora se registró en una fecha distinta a la de la actividad.
+  fueraDeFecha(bitacora: Bitacora): boolean {
+    return !!bitacora.fechaRegistro && bitacora.fechaRegistro !== bitacora.fecha;
+  }
 }

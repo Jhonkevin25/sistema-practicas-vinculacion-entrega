@@ -31,6 +31,8 @@ import java.util.Set;
 @RequiredArgsConstructor
 public class AsistenciaController {
 
+    private static final java.time.ZoneId ZONA_ECUADOR = java.time.ZoneId.of("America/Guayaquil");
+
     private final AsistenciaRepository asistenciaRepository;
     private final EstudianteRepository estudianteRepository;
     private final PracticaRepository practicaRepository;
@@ -101,7 +103,7 @@ public class AsistenciaController {
                 || !Set.of("Presente", "Atraso", "Falta").contains(asistencia.getEstado())) {
             throw new IllegalArgumentException("El estado de asistencia no es válido.");
         }
-        if (asistencia.getFecha().isAfter(LocalDate.now())) {
+        if (asistencia.getFecha().isAfter(LocalDate.now(ZONA_ECUADOR))) {
             throw new IllegalArgumentException("No se puede registrar una asistencia con fecha futura.");
         }
 

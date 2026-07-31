@@ -17,7 +17,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import tools.jackson.databind.ObjectMapper;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -35,7 +34,6 @@ class SeguimientoTimelineComponentTests {
     @Mock private AuditoriaRepository auditoriaRepository;
     @Mock private EncuestaSatisfaccionRepository encuestaRepository;
     @Mock private NotaCoordinacionRepository notaCoordinacionRepository;
-    @Mock private ObjectMapper objectMapper;
 
     @InjectMocks
     private SeguimientoTimelineComponent component;
@@ -79,7 +77,7 @@ class SeguimientoTimelineComponentTests {
         when(documentoRepository.findByEstudianteId(7)).thenReturn(List.of(documento));
         when(bitacoraRepository.findByPracticaId(10)).thenReturn(List.of(bitacora));
         when(asistenciaRepository.findByPracticaId(10)).thenReturn(List.of(asistencia));
-        when(auditoriaRepository.findByTablaAfectadaOrderByFechaAsc("EVALUACIONES_PRACTICAS_DETALLE"))
+        when(auditoriaRepository.findByTablaAfectadaYPracticaIdOrderByFechaAsc("EVALUACIONES_PRACTICAS_DETALLE", 10))
                 .thenReturn(List.of());
         when(encuestaRepository.findByPracticaId(10)).thenReturn(List.of(encuesta));
 

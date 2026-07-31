@@ -17,6 +17,7 @@ import jakarta.persistence.Transient;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
+import org.hibernate.annotations.BatchSize;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -63,6 +64,7 @@ public class OfertaCuposFundacion {
 
     @OneToMany(mappedBy = "oferta", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
     @OrderBy("id ASC")
+    @BatchSize(size = 20)
     private List<OfertaCuposFundacionCarrera> carreras = new ArrayList<>();
 
     @Transient

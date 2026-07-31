@@ -115,6 +115,9 @@
                         <div class="flex flex-wrap items-center gap-2">
                           <h4 class="text-sm font-bold text-slate-800">{{ tipoDocumentoTexto(doc.tipoDocumento) }}</h4>
                           <span class="rounded border px-2 py-1 text-[10px] font-bold" [class]="claseEstado(doc.estado)">{{ etiquetaEstado(doc.estado) }}</span>
+                          @if (etapaTexto(doc.etapa)) {
+                            <span class="rounded border border-slate-300 bg-slate-100 px-2 py-1 text-[10px] font-bold text-slate-600">{{ etapaTexto(doc.etapa) }}</span>
+                          }
                         </div>
                         <p class="mt-1 text-[11px] text-slate-500">{{ doc.proceso }} · {{ doc.carrera || doc.estudiante?.carrera }}</p>
                         @if (doc.observacion) {

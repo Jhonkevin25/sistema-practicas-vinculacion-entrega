@@ -43,6 +43,12 @@ public class Bitacora {
     @NotNull
     private Integer horas;
 
+    @Column(name = "horas_extra")
+    private Integer horasExtra = 0;
+
+    @Column(name = "fecha_registro")
+    private LocalDate fechaRegistro;
+
     private String observaciones;
 
     private String estado = "pendiente";

@@ -21,6 +21,7 @@ public interface PracticaRepository extends JpaRepository<Practica, Integer>, Jp
     List<Practica> findByTutorId(Integer tutorId);
     List<Practica> findByEncargadoId(Integer encargadoId);
     List<Practica> findByEmpresaIdAndPeriodoAcademico(Integer empresaId, String periodoAcademico);
+    List<Practica> findByEmpresaIdInAndPeriodoAcademico(Collection<Integer> empresaIds, String periodoAcademico);
     boolean existsByEstudianteIdAndTutorId(Integer estudianteId, Integer tutorId);
     long countByPeriodoAcademicoAndEstadoIn(String periodoAcademico, Collection<String> estados);
     List<Practica> findByEstadoIn(Collection<String> estados);

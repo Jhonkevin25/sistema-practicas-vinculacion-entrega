@@ -58,10 +58,11 @@ public class OfertaCuposFundacionController {
                 ? ofertaRepository.findAll()
                 : ofertaRepository.findByPeriodoAcademico(periodoAcademico.trim());
         Optional<Set<Integer>> fundacionesVisibles = fundacionesVisibles(authentication);
-        return ofertas.stream()
+        List<OfertaCuposFundacion> ofertasVisibles = ofertas.stream()
                 .filter(oferta -> fundacionesVisibles.isEmpty()
                         || fundacionesVisibles.get().contains(oferta.getFundacion().getId()))
-                .map(ofertaComponent::enriquecer)
+                .toList();
+        return ofertaComponent.enriquecerTodas(ofertasVisibles).stream()
                 .sorted((a, b) -> a.getFundacion().getNombre()
                         .compareToIgnoreCase(b.getFundacion().getNombre()))
                 .toList();

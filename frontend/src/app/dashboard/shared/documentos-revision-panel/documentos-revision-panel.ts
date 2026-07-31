@@ -148,6 +148,15 @@ export class DocumentosRevisionPanelComponent {
     return estado || 'Pendiente';
   }
 
+  // Solo carta/carta_aceptacion de PRACTICAS traen etapa poblada (backend
+  // Fase >47); '' cuando no aplica, para que el revisor sepa a cual de las
+  // dos practicas corresponde el documento.
+  etapaTexto(etapa?: string): string {
+    if (etapa === 'PRACTICA_1') return 'Práctica I';
+    if (etapa === 'PRACTICA_2') return 'Práctica II';
+    return '';
+  }
+
   tipoDocumentoTexto(tipo?: string): string {
     const etiquetas: Record<string, string> = {
       cv: 'Hoja de vida',

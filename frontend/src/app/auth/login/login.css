@@ -36,10 +36,10 @@
   width: min(620px, 100%);
 }
 
-.login-seal {
-  width: 108px;
-  height: 108px;
-  object-fit: contain;
+.login-visual-seal {
+  display: block;
+  width: min(210px, 55%);
+  height: auto;
   margin-bottom: 2rem;
 }
 
@@ -285,9 +285,8 @@
     padding-bottom: 1.5rem;
   }
 
-  .login-seal {
-    width: 82px;
-    height: 82px;
+  .login-visual-seal {
+    width: min(160px, 48%);
     margin-bottom: 1.25rem;
   }
 

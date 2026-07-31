@@ -41,6 +41,9 @@ public class DocEstudianteController {
     private static final Set<String> TIPOS_VALIDOS = Set.of(
             "cv", "carta", "cedula", "carta_aceptacion", "informe_final", "certificado");
     private static final Set<String> PROCESOS_VALIDOS = Set.of("GENERAL", "PRACTICAS", "VINCULACION");
+    // Tipos del catalogo bajo proceso=PRACTICAS que distinguen Practica I de
+    // Practica II (no heredan automaticamente de una practica a la siguiente).
+    private static final Set<String> TIPOS_CON_ETAPA_PRACTICAS = Set.of("carta", "carta_aceptacion");
     private static final Set<String> CONTENT_TYPES_VALIDOS = Set.of(
             "application/pdf", "image/jpeg", "image/png", "image/webp");
     private static final Set<String> ESTADOS_REVISION_VALIDOS = Set.of("aprobado", "requiere_correccion");
@@ -110,6 +113,7 @@ public class DocEstudianteController {
     public List<DocEstudiante> getDocumentosRevision(@RequestParam(required = false) String proceso,
                                                      @RequestParam(required = false) String estado,
                                                      @RequestParam(required = false) String carrera,
+                                                     @RequestParam(required = false) Integer estudianteId,
                                                      Authentication authentication) {
         if (!hasRole(authentication, "ADMIN") && !hasRole(authentication, "COORDINADOR")) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "No puedes revisar documentos.");
@@ -118,7 +122,14 @@ public class DocEstudianteController {
         String estadoFiltro = normalizarOpcional(estado).map(this::estadoListado).orElse(null);
         String carreraFiltro = normalizarOpcional(carrera).orElse(null);
 
-        return documentoRepository.findAll().stream()
+        // Perf: cuando el llamador ya conoce el estudiante (p.ej. abrir su
+        // expediente), acota en la query en vez de traer TODA la tabla de
+        // documentos en revision y filtrar en memoria.
+        List<DocEstudiante> base = estudianteId != null
+                ? documentoRepository.findByEstudianteId(estudianteId)
+                : documentoRepository.findAll();
+
+        return base.stream()
                 .filter(doc -> doc.getUrlArchivo() != null && !doc.getUrlArchivo().isBlank())
                 .filter(doc -> procesoFiltro.map(p -> p.equals(doc.getProceso())).orElse(true))
                 .filter(doc -> estadoFiltro == null || estadoFiltro.equals(doc.getEstado()))
@@ -160,6 +171,9 @@ public class DocEstudianteController {
         doc.setFechaSubida(LocalDateTime.now());
         doc.setProceso(procesoFinal);
         doc.setCarrera(estudiante.getCarrera());
+        if (EtapaAcademicaComponent.PROCESO_PRACTICAS.equals(procesoFinal) && TIPOS_CON_ETAPA_PRACTICAS.contains(tipo)) {
+            doc.setEtapa(etapaAcademicaComponent.etapaPracticaActual(estudiante));
+        }
         doc.setEstado(doc.getUrlArchivo() == null || doc.getUrlArchivo().isBlank() ? "pendiente" : "cargado");
         documentoRepository.save(doc);
 

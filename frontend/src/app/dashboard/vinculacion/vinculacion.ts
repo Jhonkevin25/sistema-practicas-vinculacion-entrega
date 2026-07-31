@@ -238,7 +238,7 @@ export class VinculacionComponent {
   showSurveyModal = signal(false);
   surveyTargetParcial = signal(1);
   surveyAnswers = { tutorScore: 5, projectScore: 5, relevanceScore: 5, clarityScore: 5, comment: '' };
-  newBitacora = { fecha: '', actividad: '', horas: 4, parcial: 1 as 1 | 2 | 3, observaciones: '' };
+  newBitacora = { fecha: '', actividad: '', horas: 4, horasExtra: 0, parcial: 1 as 1 | 2 | 3, observaciones: '' };
 
   postulacionHabilitada(): boolean {
     const inicio = this.fechaInicioPostulacion();
@@ -375,7 +375,10 @@ export class VinculacionComponent {
     forkJoin({
       estudiantes: esTutor ? of([] as Estudiante[]) : this.expediente.estudiantesSegunRol(user.rol),
       usuarios: esGestion ? this.expediente.usuariosSegunRol(user.rol) : of([] as Usuario[]),
-      vinculaciones: this.expediente.vinculacionesSegunRol(user.rol),
+      // ADMIN/COORDINADOR obtienen su listado con cargarPaginaLista() (paginado
+      // en BD); pedir aquí vinculacionesSegunRol() para ellos traía TODAS las
+      // vinculaciones (getAll sin paginar) solo para descartar el resultado abajo.
+      vinculaciones: esGestion ? of([] as Vinculacion[]) : this.expediente.vinculacionesSegunRol(user.rol),
       postulaciones: this.expediente.postulacionesVinculacionSegunRol(user.rol),
       configuraciones: esTutor ? of([]) : this.configuracionService.getByTipo('VINCULACION'),
       bitacoras: this.expediente.bitacorasSegunRol(user.rol),
@@ -669,6 +672,7 @@ export class VinculacionComponent {
       fecha: this.newBitacora.fecha,
       actividad: this.newBitacora.actividad,
       horas: this.newBitacora.horas,
+      horasExtra: this.newBitacora.horasExtra || 0,
       observaciones: this.newBitacora.observaciones,
       estado: 'pendiente'
     };
@@ -679,7 +683,7 @@ export class VinculacionComponent {
     ).subscribe({
       next: creada => {
         this.bitacoras.set([...this.bitacoras(), creada]);
-        this.newBitacora = { fecha: '', actividad: '', horas: 4, parcial: 1, observaciones: '' };
+        this.newBitacora = { fecha: '', actividad: '', horas: 4, horasExtra: 0, parcial: 1, observaciones: '' };
         this.toastService.success('Bitácora de vinculación enviada para revisión.');
       },
       error: (err) => this.toastService.error(err?.error?.error || 'No se pudo registrar la bitácora.')
@@ -693,6 +697,7 @@ export class VinculacionComponent {
       fecha: bitacora.fecha,
       actividad: bitacora.actividad,
       horas: bitacora.horas,
+      horasExtra: bitacora.horasExtra || 0,
       parcial: bitacora.parcial,
       observaciones: bitacora.observaciones || ''
     };
@@ -704,7 +709,12 @@ export class VinculacionComponent {
 
   cancelarCorreccionBitacora(): void {
     this.bitacoraEnCorreccion.set(null);
-    this.newBitacora = { fecha: '', actividad: '', horas: 4, parcial: 1, observaciones: '' };
+    this.newBitacora = { fecha: '', actividad: '', horas: 4, horasExtra: 0, parcial: 1, observaciones: '' };
+  }
+
+  // Aviso informativo: la bitácora se registró en una fecha distinta a la de la actividad.
+  bitacoraFueraDeFecha(bitacora: Bitacora): boolean {
+    return !!bitacora.fechaRegistro && bitacora.fechaRegistro !== bitacora.fecha;
   }
 
   processBitacora(b: Bitacora, status: 'aprobada' | 'rechazada' | 'requiere_correccion', observacion?: string): void {
@@ -1106,9 +1116,14 @@ export class VinculacionComponent {
     this.cargarPaginaSeguimiento();
   }
 
+  private filtroSeguimientoDebounce?: ReturnType<typeof setTimeout>;
+
   filtrarSeguimiento(): void {
-    this.paginaSeguimiento.set(0);
-    this.cargarPaginaSeguimiento();
+    if (this.filtroSeguimientoDebounce) clearTimeout(this.filtroSeguimientoDebounce);
+    this.filtroSeguimientoDebounce = setTimeout(() => {
+      this.paginaSeguimiento.set(0);
+      this.cargarPaginaSeguimiento();
+    }, 400);
   }
 
   // El seguimiento paginado es un DTO plano (solo trae vinculacionId); para el
@@ -1222,7 +1237,7 @@ export class VinculacionComponent {
       bits: consultaGestion ? this.bitacoraService.getByEstudiante(vinc.estudiante.id!) : of([] as Bitacora[]),
       asis: consultaGestion ? this.asistenciaService.getByVinculacion(vinc.id) : of([] as Asistencia[]),
       docs: consultaGestion
-        ? this.documentoService.getRevision({ proceso: 'VINCULACION' })
+        ? this.documentoService.getRevision({ proceso: 'VINCULACION', estudianteId: vinc.estudiante.id })
         : of([] as DocEstudiante[])
     }).pipe(
       finalize(() => this.inspeccionandoVinculacionId.set(null))
@@ -1231,8 +1246,7 @@ export class VinculacionComponent {
         this.encuestasSeguimiento.set(encuestas);
         this.comentariosCoordinacionSeguimiento.set(
           notas.filter(n => n.vinculacion?.id === vinc.id));
-        this.documentosSeguimiento.set(
-          docs.filter(d => d.estudiante?.id === vinc.estudiante.id));
+        this.documentosSeguimiento.set(docs);
         if (consultaGestion) {
           const bitsVinc = bits.filter(b => b.vinculacion?.id === vinc.id);
           const existingBits = this.bitacoras().filter(b => b.vinculacion?.id !== vinc.id);

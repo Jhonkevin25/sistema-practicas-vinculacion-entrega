@@ -21,11 +21,15 @@ export class EmpresaService {
   private readonly http = inject(HttpClient);
   private readonly apiUrl = '/api/empresas';
 
+  private cacheAll$: Observable<Empresa[]> | null = null;
   private cachePaginado$: Observable<Paginado<Empresa>> | null = null;
   private lastParamsKey = '';
 
-  getAll(): Observable<Empresa[]> {
-    return this.http.get<Empresa[]>(this.apiUrl);
+  getAll(forceRefresh = false): Observable<Empresa[]> {
+    if (forceRefresh || !this.cacheAll$) {
+      this.cacheAll$ = this.http.get<Empresa[]>(this.apiUrl).pipe(shareReplay(1));
+    }
+    return this.cacheAll$;
   }
 
   // Fase 43: listado paginado con filtros resueltos en el backend
@@ -44,6 +48,7 @@ export class EmpresaService {
   }
 
   clearCache(): void {
+    this.cacheAll$ = null;
     this.cachePaginado$ = null;
     this.lastParamsKey = '';
   }

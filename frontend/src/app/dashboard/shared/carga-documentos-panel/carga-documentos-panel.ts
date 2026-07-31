@@ -8,6 +8,9 @@ export class CargaDocumentosPanelComponent {
   proceso = input.required<'PRACTICAS' | 'VINCULACION'>();
   documentos = input.required<DocEstudiante[]>();
   subiendo = input<TipoDocumento | null>(null);
+  // Etapa academica actual del estudiante ('PRACTICA_1'/'PRACTICA_2'), solo
+  // aplica cuando proceso() es 'PRACTICAS'. Ver documento().
+  etapaActual = input<'PRACTICA_1' | 'PRACTICA_2' | null>(null);
   subir = output<{ tipo: TipoDocumento; evento: Event }>();
   ver = output<TipoDocumento>();
 
@@ -21,7 +24,20 @@ export class CargaDocumentosPanelComponent {
   }
 
   documento(tipo: TipoDocumento): DocEstudiante | undefined {
-    return this.documentos().find(item => item.tipoDocumento === tipo);
+    const doc = this.documentos().find(item => item.tipoDocumento === tipo);
+    if (!doc) return undefined;
+    // La carta de Practica I y la de Practica II se guardan bajo el mismo
+    // tipoDocumento; si el documento encontrado quedo etiquetado con una
+    // etapa distinta a la actual, se trata como no subido para esta etapa
+    // (el estudiante debe volver a cargarlo).
+    if (this.requiereEtapaVigente(tipo) && doc.etapa && doc.etapa !== this.etapaActual()) {
+      return undefined;
+    }
+    return doc;
+  }
+
+  private requiereEtapaVigente(tipo: TipoDocumento): boolean {
+    return this.proceso() === 'PRACTICAS' && (tipo === 'carta' || tipo === 'carta_aceptacion');
   }
 
   tieneArchivo(tipo: TipoDocumento): boolean { return !!this.documento(tipo)?.urlArchivo; }

@@ -3,6 +3,7 @@ package ec.edu.unibe.sistema_practicas.proyecto;
 import ec.edu.unibe.sistema_practicas.fundacion.Fundacion;
 import jakarta.persistence.*;
 import lombok.Data;
+import org.hibernate.annotations.BatchSize;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -48,5 +49,6 @@ public class Proyecto {
 
     @OneToMany(mappedBy = "proyecto", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
     @OrderBy("id ASC")
+    @BatchSize(size = 20)
     private List<ProyectoCarrera> carreras = new ArrayList<>();
 }

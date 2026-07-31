@@ -5,6 +5,7 @@ import ec.edu.unibe.sistema_practicas.empresa.Empresa;
 import ec.edu.unibe.sistema_practicas.usuario.Usuario;
 import jakarta.persistence.*;
 import lombok.Data;
+import org.hibernate.annotations.BatchSize;
 
 import java.time.LocalDateTime;
 import java.util.LinkedHashSet;
@@ -49,5 +50,6 @@ public class TutorEmpresa {
             inverseJoinColumns = @JoinColumn(name = "carrera_id")
     )
     @OrderBy("nombre ASC")
+    @BatchSize(size = 20)
     private Set<Carrera> carreras = new LinkedHashSet<>();
 }

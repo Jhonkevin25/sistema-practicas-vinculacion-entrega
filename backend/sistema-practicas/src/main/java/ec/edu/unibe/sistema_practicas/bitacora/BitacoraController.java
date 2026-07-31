@@ -1,7 +1,11 @@
 package ec.edu.unibe.sistema_practicas.bitacora;
 
+import ec.edu.unibe.sistema_practicas.asistencia.Asistencia;
+import ec.edu.unibe.sistema_practicas.asistencia.AsistenciaRepository;
 import ec.edu.unibe.sistema_practicas.coordinador.AlcanceCoordinador;
 import ec.edu.unibe.sistema_practicas.cierre.CierreExpedienteComponent;
+import ec.edu.unibe.sistema_practicas.coordinador.CoordinadorCarrera;
+import ec.edu.unibe.sistema_practicas.coordinador.CoordinadorCarreraRepository;
 import ec.edu.unibe.sistema_practicas.estudiante.Estudiante;
 import ec.edu.unibe.sistema_practicas.estudiante.EstudianteRepository;
 import ec.edu.unibe.sistema_practicas.notificacion.NotificacionEmitter;
@@ -20,7 +24,10 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 import jakarta.validation.Valid;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -34,6 +41,7 @@ public class BitacoraController {
 
     private static final String PRACTICAS = "PRACTICAS";
     private static final String VINCULACION = "VINCULACION";
+    private static final ZoneId ZONA_ECUADOR = ZoneId.of("America/Guayaquil");
 
     private final BitacoraRepository bitacoraRepository;
     private final EstudianteRepository estudianteRepository;
@@ -43,6 +51,8 @@ public class BitacoraController {
     private final NotificacionEmitter notificacionEmitter;
     private final CierreExpedienteComponent cierreExpedienteComponent;
     private final HorasExpedienteComponent horasExpedienteComponent;
+    private final AsistenciaRepository asistenciaRepository;
+    private final CoordinadorCarreraRepository coordinadorCarreraRepository;
 
     @GetMapping
     public List<Bitacora> getAll(Authentication authentication,
@@ -110,7 +120,10 @@ public class BitacoraController {
         bitacora.setRevisadoPor(null);
         bitacora.setFechaRevision(null);
         bitacora.setUpdatedAt(LocalDateTime.now());
-        return bitacoraRepository.save(bitacora);
+        bitacora.setFechaRegistro(LocalDate.now(ZONA_ECUADOR));
+        Bitacora guardada = bitacoraRepository.save(bitacora);
+        notificarDiscrepanciasSiAplica(guardada);
+        return guardada;
     }
 
     @PutMapping("/{id}/reenviar")
@@ -353,6 +366,73 @@ public class BitacoraController {
             horasExpedienteComponent.aplicarHorasAprobadas(vinculacion);
             vinculacionRepository.save(vinculacion);
         }
+    }
+
+    private void notificarDiscrepanciasSiAplica(Bitacora bitacora) {
+        Asistencia asistenciaDelDia = buscarAsistenciaDelDia(bitacora);
+        List<String> discrepancias = detectarDiscrepancias(bitacora, asistenciaDelDia);
+        if (discrepancias.isEmpty()) return;
+
+        String nombreEstudiante = bitacora.getEstudiante() == null ? "El estudiante" : nombreCompleto(bitacora.getEstudiante());
+        String mensaje = "La bitácora del " + bitacora.getFecha() + " de " + nombreEstudiante
+                + " presenta discrepancias: " + String.join(" ", discrepancias);
+        String ruta = bitacora.getVinculacion() != null ? "/dashboard/vinculacion" : "/dashboard/practicas";
+
+        Usuario tutor = bitacora.getPractica() != null ? bitacora.getPractica().getTutor()
+                : bitacora.getVinculacion() != null ? bitacora.getVinculacion().getTutor() : null;
+        if (tutor != null) {
+            notificacionEmitter.emitir(tutor, "bitacora_discrepancia", "Discrepancia en bitácora", mensaje,
+                    "bitacora", bitacora.getId().longValue(), ruta);
+        }
+
+        if (bitacora.getEstudiante() != null && bitacora.getEstudiante().getCarrera() != null) {
+            List<CoordinadorCarrera> coordinadores =
+                    coordinadorCarreraRepository.findByCarreraIgnoreCase(bitacora.getEstudiante().getCarrera());
+            coordinadores.stream()
+                    .map(CoordinadorCarrera::getUsuario)
+                    .filter(coordinadorUsuario -> coordinadorUsuario != null
+                            && (tutor == null || !coordinadorUsuario.getId().equals(tutor.getId())))
+                    .forEach(coordinadorUsuario -> notificacionEmitter.emitir(
+                            coordinadorUsuario, "bitacora_discrepancia", "Discrepancia en bitácora", mensaje,
+                            "bitacora", bitacora.getId().longValue(), ruta));
+        }
+    }
+
+    private List<String> detectarDiscrepancias(Bitacora bitacora, Asistencia asistenciaDelDia) {
+        List<String> razones = new ArrayList<>();
+        if (asistenciaDelDia == null) {
+            razones.add("No tiene respaldo de asistencia ese día.");
+        }
+        if (bitacora.getFechaRegistro() != null && bitacora.getFecha() != null
+                && !bitacora.getFechaRegistro().equals(bitacora.getFecha())) {
+            razones.add("Fue registrada el " + bitacora.getFechaRegistro()
+                    + ", fuera de la fecha reportada (" + bitacora.getFecha() + ").");
+        }
+        if (bitacora.getHorasExtra() != null && bitacora.getHorasExtra() > 0) {
+            razones.add("Reporta " + bitacora.getHorasExtra() + " horas extra que requieren verificación.");
+        }
+        return razones;
+    }
+
+    private Asistencia buscarAsistenciaDelDia(Bitacora bitacora) {
+        if (bitacora.getPractica() != null && bitacora.getPractica().getId() != null) {
+            return asistenciaRepository.findByPracticaIdAndFecha(bitacora.getPractica().getId(), bitacora.getFecha())
+                    .orElse(null);
+        }
+        if (bitacora.getVinculacion() != null && bitacora.getVinculacion().getId() != null) {
+            return asistenciaRepository.findByVinculacionIdAndFecha(bitacora.getVinculacion().getId(), bitacora.getFecha())
+                    .orElse(null);
+        }
+        return null;
+    }
+
+    private String nombreCompleto(Estudiante estudiante) {
+        Usuario usuarioEstudiante = estudiante.getUsuario();
+        if (usuarioEstudiante == null) return "el estudiante";
+        String nombres = usuarioEstudiante.getNombre() == null ? "" : usuarioEstudiante.getNombre();
+        String apellidos = usuarioEstudiante.getApellido() == null ? "" : usuarioEstudiante.getApellido();
+        String nombre = (nombres + " " + apellidos).trim();
+        return nombre.isEmpty() ? "el estudiante" : nombre;
     }
 
     private boolean hasRole(Authentication authentication, String role) {

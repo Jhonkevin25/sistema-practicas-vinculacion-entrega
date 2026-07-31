@@ -17,7 +17,6 @@ import ec.edu.unibe.sistema_practicas.usuario.Usuario;
 import ec.edu.unibe.sistema_practicas.vinculacion.Vinculacion;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
-import tools.jackson.databind.ObjectMapper;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -25,7 +24,6 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
-import java.util.Map;
 import java.util.Objects;
 
 @Component
@@ -38,7 +36,6 @@ public class SeguimientoTimelineComponent {
     private final AuditoriaRepository auditoriaRepository;
     private final EncuestaSatisfaccionRepository encuestaRepository;
     private final NotaCoordinacionRepository notaCoordinacionRepository;
-    private final ObjectMapper objectMapper;
 
     public LineaTiempoExpedienteResponse paraPractica(Practica practica) {
         List<EventoLineaTiempo> eventos = new ArrayList<>();
@@ -164,9 +161,18 @@ public class SeguimientoTimelineComponent {
     }
 
     private void agregarAuditoriaNotas(List<EventoLineaTiempo> eventos, Integer practicaId, Integer vinculacionId) {
-        auditoriaRepository.findByTablaAfectadaOrderByFechaAsc("EVALUACIONES_PRACTICAS_DETALLE").stream()
+        List<Auditoria> auditorias;
+        if (practicaId != null) {
+            auditorias = auditoriaRepository.findByTablaAfectadaYPracticaIdOrderByFechaAsc(
+                    "EVALUACIONES_PRACTICAS_DETALLE", practicaId);
+        } else if (vinculacionId != null) {
+            auditorias = auditoriaRepository.findByTablaAfectadaYVinculacionIdOrderByFechaAsc(
+                    "EVALUACIONES_PRACTICAS_DETALLE", vinculacionId);
+        } else {
+            auditorias = List.of();
+        }
+        auditorias.stream()
                 .filter(auditoria -> auditoria.getFecha() != null)
-                .filter(auditoria -> enlazaExpediente(auditoria, practicaId, vinculacionId))
                 .forEach(auditoria -> eventos.add(new EventoLineaTiempo(
                         "auditoria-nota-" + auditoria.getId(),
                         "NOTA_AUDITADA",
@@ -199,24 +205,6 @@ public class SeguimientoTimelineComponent {
                         + ". Motivo: " + Objects.toString(motivo, "")
                         : "El expediente fue cerrado formalmente.",
                 fecha, estado, nombre(actor)));
-    }
-
-    private boolean enlazaExpediente(Auditoria auditoria, Integer practicaId, Integer vinculacionId) {
-        return contieneId(auditoria.getDatosAntes(), "practicaId", practicaId)
-                || contieneId(auditoria.getDatosDespues(), "practicaId", practicaId)
-                || contieneId(auditoria.getDatosAntes(), "vinculacionId", vinculacionId)
-                || contieneId(auditoria.getDatosDespues(), "vinculacionId", vinculacionId);
-    }
-
-    @SuppressWarnings("unchecked")
-    private boolean contieneId(String json, String campo, Integer esperado) {
-        if (json == null || esperado == null) return false;
-        try {
-            Map<String, Object> datos = objectMapper.readValue(json, Map.class);
-            return Objects.equals(String.valueOf(datos.get(campo)), String.valueOf(esperado));
-        } catch (Exception ignored) {
-            return false;
-        }
     }
 
     private boolean aplicaProceso(String documentoProceso, String proceso) {

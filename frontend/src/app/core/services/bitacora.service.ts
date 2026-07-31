@@ -14,6 +14,8 @@ export interface Bitacora {
   fecha: string;
   actividad: string;
   horas: number;
+  horasExtra?: number;
+  fechaRegistro?: string;
   observaciones?: string;
   observacionesTutor?: string;
   estado?: 'pendiente' | 'aprobada' | 'rechazada' | 'requiere_correccion';

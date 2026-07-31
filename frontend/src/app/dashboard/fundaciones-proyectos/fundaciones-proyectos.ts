@@ -59,6 +59,12 @@ export class FundacionesProyectosComponent implements OnDestroy {
   filtroActiva = 'TODOS';
   private timerBusqueda: ReturnType<typeof setTimeout> | null = null;
 
+  // Fase de optimización: paginación del listado de proyectos (antes traía
+  // todos los periodos sin paginar)
+  paginaProyectos = signal(0);
+  totalPaginasProyectos = signal(0);
+  totalElementosProyectos = signal(0);
+
   ngOnDestroy(): void {
     if (this.timerBusqueda) clearTimeout(this.timerBusqueda);
   }
@@ -104,6 +110,10 @@ export class FundacionesProyectosComponent implements OnDestroy {
     this.loadData(false, pagina);
   }
 
+  cambiarPaginaProyectos(paginaProyectos: number): void {
+    this.loadData(false, this.pagina(), paginaProyectos);
+  }
+
   // Búsqueda con pequeña espera para no disparar una petición por tecla
   buscarConRetardo(): void {
     if (this.timerBusqueda) clearTimeout(this.timerBusqueda);
@@ -114,16 +124,15 @@ export class FundacionesProyectosComponent implements OnDestroy {
     this.loadData(false, 0);
   }
 
-  loadData(isInitial = false, pagina = this.pagina()): void {
+  loadData(isInitial = false, pagina = this.pagina(), paginaProyectos = this.paginaProyectos()): void {
     if (isInitial) this.loading.set(true); else this.isRefreshing.set(true);
     const rol = this.authService.getRole();
-    this.ofertaCuposService.clearCache();
     forkJoin({
       fundaciones: this.fundacionService.getPaginado(pagina, this.tamanoPagina, {
         texto: this.filtroTexto,
         activa: this.filtroActiva
       }),
-      proyectos: this.proyectoService.getAll(),
+      proyectos: this.proyectoService.getPaginado(paginaProyectos, this.tamanoPagina),
       convenios: rol === 'ADMIN' || rol === 'COORDINADOR'
         ? this.convenioService.getAll()
         : of([] as Convenio[]),
@@ -139,7 +148,10 @@ export class FundacionesProyectosComponent implements OnDestroy {
         this.pagina.set(fundaciones.pagina);
         this.totalPaginas.set(fundaciones.totalPaginas);
         this.totalElementos.set(fundaciones.totalElementos);
-        this.proyectos.set(proyectos);
+        this.proyectos.set(proyectos.contenido);
+        this.paginaProyectos.set(proyectos.pagina);
+        this.totalPaginasProyectos.set(proyectos.totalPaginas);
+        this.totalElementosProyectos.set(proyectos.totalElementos);
         this.convenios.set(convenios);
         this.ofertasCupos.set(ofertas);
         this.carrerasCatalogo.set(carreras);
@@ -178,6 +190,9 @@ export class FundacionesProyectosComponent implements OnDestroy {
     request.subscribe({
       next: () => {
         this.guardandoFundacion.set(false);
+        // La fundación puede afectar la oferta de cupos visible (p. ej. su
+        // estado activa/inactiva); refrescamos el caché al guardar, no en cada carga.
+        this.ofertaCuposService.clearCache();
         this.loadData();
         this.showFundacionModal.set(false);
         this.toastService.success(editando
@@ -196,6 +211,7 @@ export class FundacionesProyectosComponent implements OnDestroy {
     if (await this.confirmService.confirm('¿Deseas eliminar esta fundación?')) {
       this.fundacionService.delete(id).subscribe({
         next: () => {
+          this.ofertaCuposService.clearCache();
           this.loadData();
           this.toastService.success('Fundación eliminada.');
         },
@@ -218,6 +234,9 @@ export class FundacionesProyectosComponent implements OnDestroy {
   proyectoGuardado(): void {
     this.showProyectoModal.set(false);
     this.proyectoEnEdicion = null;
+    // Un proyecto guardado cambia los cupos comprometidos de la oferta de su
+    // fundación; refrescamos el caché al guardar, no en cada carga/paginación.
+    this.ofertaCuposService.clearCache();
     this.loadData();
   }
 
@@ -266,6 +285,7 @@ export class FundacionesProyectosComponent implements OnDestroy {
     const actualizada = { ...fundacion, activa: fundacion.activa === false };
     this.fundacionService.update(fundacion.id, actualizada).subscribe({
       next: () => {
+        this.ofertaCuposService.clearCache();
         this.loadData();
         this.toastService.success(actualizada.activa
           ? 'Fundación habilitada.'
@@ -284,6 +304,7 @@ export class FundacionesProyectosComponent implements OnDestroy {
     if (await this.confirmService.confirm('¿Deseas eliminar este proyecto?')) {
       this.proyectoService.delete(id).subscribe({
         next: () => {
+          this.ofertaCuposService.clearCache();
           this.loadData();
           this.toastService.success('Proyecto eliminado.');
         },

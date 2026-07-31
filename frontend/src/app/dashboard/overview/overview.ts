@@ -6,7 +6,6 @@ import { AuthService } from '../../core/services/auth.service';
 import { DocumentoService, DocEstudiante } from '../../core/services/documento.service';
 import { ToastService } from '../../core/services/toast.service';
 import { EstudianteService } from '../../core/services/estudiante.service';
-import { EmpresaService } from '../../core/services/empresa.service';
 import { PracticaService } from '../../core/services/practica.service';
 import { VinculacionService } from '../../core/services/vinculacion.service';
 import { EvaluacionService, EvaluacionDetalle } from '../../core/services/evaluacion.service';
@@ -14,11 +13,10 @@ import { ConfiguracionService, FechaLimiteCalificacion } from '../../core/servic
 import { forkJoin, of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 import { Estudiante } from '../../core/services/estudiante.service';
-import { Empresa } from '../../core/services/empresa.service';
 import { Practica } from '../../core/services/practica.service';
 import { Vinculacion } from '../../core/services/vinculacion.service';
 import { ExpedienteService } from '../../core/services/expediente.service';
-import { ReporteService, AsignacionReporte, CupoReporte, TipoReporte } from '../../core/services/reporte.service';
+import { ReporteService, DistribucionEstadoReporte, CupoEntidadReporte, TipoReporte } from '../../core/services/reporte.service';
 
 @Component({
   selector: 'app-overview',
@@ -31,7 +29,6 @@ export class OverviewComponent {
   readonly authService = inject(AuthService);
   private readonly toastService = inject(ToastService);
   private readonly estudianteService = inject(EstudianteService);
-  private readonly empresaService = inject(EmpresaService);
   private readonly practicaService = inject(PracticaService);
   private readonly vinculacionService = inject(VinculacionService);
   private readonly evaluacionService = inject(EvaluacionService);
@@ -51,10 +48,11 @@ export class OverviewComponent {
   totalPracticas = signal(0);
   totalVinculaciones = signal(0);
 
-  // Dashboard analítico (solo gestión): datos de /api/reportes con el
-  // alcance del coordinador aplicado en el backend.
-  reporteAsignaciones = signal<AsignacionReporte[]>([]);
-  reporteCupos = signal<CupoReporte[]>([]);
+  // Dashboard analítico (solo gestión): datos ya agregados en el backend
+  // (/distribucion-estados, /cupos-top-entidades) con el alcance del
+  // coordinador aplicado, listos para los gráficos sin agregar en cliente.
+  reporteDistribucionEstados = signal<DistribucionEstadoReporte[]>([]);
+  reporteCuposTopEntidades = signal<CupoEntidadReporte[]>([]);
   cargandoReportes = signal(false);
   exportando = signal<TipoReporte | null>(null);
 
@@ -110,37 +108,32 @@ export class OverviewComponent {
   private loadReportes(): void {
     this.cargandoReportes.set(true);
     forkJoin({
-      asignaciones: this.reporteService.asignaciones({}).pipe(catchError(() => of([] as AsignacionReporte[]))),
-      cupos: this.reporteService.cupos({}).pipe(catchError(() => of([] as CupoReporte[])))
+      distribucion: this.reporteService.getDistribucionEstados().pipe(catchError(() => of([] as DistribucionEstadoReporte[]))),
+      cupos: this.reporteService.getCuposTopEntidades().pipe(catchError(() => of([] as CupoEntidadReporte[])))
     }).subscribe(res => {
-      this.reporteAsignaciones.set(res.asignaciones);
-      this.reporteCupos.set(res.cupos);
+      this.reporteDistribucionEstados.set(res.distribucion);
+      this.reporteCuposTopEntidades.set(res.cupos);
       this.cargandoReportes.set(false);
     });
   }
 
-  // Distribución por estado para el gráfico de anillo (solo categorías con datos)
+  // Distribución por estado para el gráfico de anillo (solo categorías con datos),
+  // ya agregada en el backend; aquí solo se le asigna el color fijo por estado.
   distribucionEstados(): { etiqueta: string; valor: number; color: string }[] {
-    const filas = this.reporteAsignaciones();
+    const porEstado = new Map(this.reporteDistribucionEstados().map(d => [d.estado, d.cantidad]));
     return this.ESTADOS_GRAFICO
       .map(e => ({
         etiqueta: e.etiqueta,
         color: e.color,
-        valor: filas.filter(f => (f.estado || '').toLowerCase() === e.clave).length
+        valor: porEstado.get(e.clave) || 0
       }))
       .filter(e => e.valor > 0);
   }
 
-  // Top de entidades con cupos disponibles para el gráfico de barras
+  // Top de entidades con cupos disponibles para el gráfico de barras, ya
+  // agregado, ordenado y recortado a 8 en el backend.
   cuposPorEntidad(): { entidad: string; disponibles: number }[] {
-    const porEntidad = new Map<string, number>();
-    for (const c of this.reporteCupos()) {
-      const clave = c.entidad || 'Sin entidad';
-      porEntidad.set(clave, (porEntidad.get(clave) || 0) + (c.cuposDisponibles || 0));
-    }
-    return Array.from(porEntidad, ([entidad, disponibles]) => ({ entidad, disponibles }))
-      .sort((a, b) => b.disponibles - a.disponibles)
-      .slice(0, 8);
+    return this.reporteCuposTopEntidades();
   }
 
   private renderCharts(): void {
@@ -239,48 +232,17 @@ export class OverviewComponent {
   loadStats(): void {
     this.loading.set(true);
     if (this.userRole() === 'ADMIN' || this.userRole() === 'COORDINADOR') {
-      const esCoordinador = this.userRole() === 'COORDINADOR';
-      const type = esCoordinador ? this.authService.coordinacionTipo() : 'AMBOS';
       this.loadReportes();
 
-      forkJoin({
-        estudiantes: this.estudianteService.getAll(),
-        empresas: this.empresaService.getAll(),
-        practicas: type === 'VINCULACION' ? of([]) : this.practicaService.getAll(),
-        vinculaciones: type === 'PRACTICAS' ? of([]) : this.vinculacionService.getAll()
-      }).subscribe({
-        next: (res: { estudiantes: Estudiante[], empresas: Empresa[], practicas: Practica[], vinculaciones: Vinculacion[] }) => {
-          const assignedCareers = this.authService.carrerasAsignadas();
-
-          // Filter students by assigned careers
-          const filteredStudents = esCoordinador
-            ? res.estudiantes.filter((e: Estudiante) => assignedCareers.includes(e.carrera))
-            : res.estudiantes;
-          this.totalEstudiantes.set(filteredStudents.length);
-
-          // Total companies (can show all or filter if company has area match)
-          this.totalEmpresas.set(res.empresas.length);
-
-          // Filter practices by career and coordinator type
-          if (type === 'VINCULACION') {
-            this.totalPracticas.set(0);
-          } else {
-            const filteredPracticas = esCoordinador
-              ? res.practicas.filter((p: Practica) => assignedCareers.includes(p.estudiante.carrera))
-              : res.practicas;
-            this.totalPracticas.set(filteredPracticas.length);
-          }
-
-          // Filter vinculación by career and coordinator type
-          if (type === 'PRACTICAS') {
-            this.totalVinculaciones.set(0);
-          } else {
-            const filteredVinculaciones = esCoordinador
-              ? res.vinculaciones.filter((v: Vinculacion) => assignedCareers.includes(v.estudiante.carrera))
-              : res.vinculaciones;
-            this.totalVinculaciones.set(filteredVinculaciones.length);
-          }
-
+      // Perf: conteos ya calculados en BD con el alcance del coordinador
+      // aplicado en el backend (evita traer estudiantes/empresas/practicas/
+      // vinculaciones completos solo para contar despues de filtrar en cliente).
+      this.reporteService.getConteosOverview().subscribe({
+        next: (conteos) => {
+          this.totalEstudiantes.set(conteos.estudiantes);
+          this.totalEmpresas.set(conteos.empresas);
+          this.totalPracticas.set(conteos.practicas);
+          this.totalVinculaciones.set(conteos.vinculaciones);
           this.loading.set(false);
         },
         error: () => {

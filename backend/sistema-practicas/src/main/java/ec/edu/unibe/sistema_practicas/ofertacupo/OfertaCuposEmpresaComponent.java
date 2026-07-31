@@ -12,6 +12,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Component
 @RequiredArgsConstructor
@@ -57,6 +59,50 @@ public class OfertaCuposEmpresaComponent {
         }
         Compromisos compromisos = compromisos(
                 oferta.getEmpresa().getId(), oferta.getPeriodoAcademico(), vacanteExcluidaId);
+        return aplicar(oferta, compromisos);
+    }
+
+    // Fase de optimización: enriquece un lote de ofertas con una sola consulta batch
+    // de vacantes y una sola de prácticas por periodo (en vez de 2 queries por oferta).
+    public List<OfertaCuposEmpresa> enriquecerTodas(List<OfertaCuposEmpresa> ofertas) {
+        List<OfertaCuposEmpresa> validas = ofertas.stream()
+                .filter(oferta -> oferta != null && oferta.getEmpresa() != null
+                        && oferta.getEmpresa().getId() != null)
+                .toList();
+        if (validas.isEmpty()) {
+            return ofertas;
+        }
+
+        Map<String, List<OfertaCuposEmpresa>> ofertasPorPeriodo = validas.stream()
+                .collect(Collectors.groupingBy(OfertaCuposEmpresa::getPeriodoAcademico));
+
+        for (Map.Entry<String, List<OfertaCuposEmpresa>> entry : ofertasPorPeriodo.entrySet()) {
+            String periodo = entry.getKey();
+            List<OfertaCuposEmpresa> ofertasDelPeriodo = entry.getValue();
+            Set<Integer> empresaIds = ofertasDelPeriodo.stream()
+                    .map(oferta -> oferta.getEmpresa().getId())
+                    .collect(Collectors.toSet());
+
+            Map<Integer, List<VacantePractica>> vacantesPorEmpresa = vacanteRepository
+                    .findByEmpresaIdInAndPeriodoAcademico(empresaIds, periodo).stream()
+                    .collect(Collectors.groupingBy(vacante -> vacante.getEmpresa().getId()));
+            Map<Integer, List<Practica>> practicasPorEmpresa = practicaRepository
+                    .findByEmpresaIdInAndPeriodoAcademico(empresaIds, periodo).stream()
+                    .collect(Collectors.groupingBy(practica -> practica.getEmpresa().getId()));
+
+            for (OfertaCuposEmpresa oferta : ofertasDelPeriodo) {
+                Integer empresaId = oferta.getEmpresa().getId();
+                Compromisos compromisos = calcularCompromisos(
+                        vacantesPorEmpresa.getOrDefault(empresaId, List.of()),
+                        practicasPorEmpresa.getOrDefault(empresaId, List.of()),
+                        null);
+                aplicar(oferta, compromisos);
+            }
+        }
+        return ofertas;
+    }
+
+    private OfertaCuposEmpresa aplicar(OfertaCuposEmpresa oferta, Compromisos compromisos) {
         oferta.setCuposReservados(compromisos.reservadosTotales());
         oferta.setCuposOcupados(compromisos.ocupadosTotales());
         oferta.setCuposDisponibles(Math.max(0,
@@ -125,11 +171,17 @@ public class OfertaCuposEmpresaComponent {
 
     private Compromisos compromisos(Integer empresaId, String periodo, Integer vacanteExcluidaId) {
         List<VacantePractica> vacantes = vacanteRepository
-                .findByEmpresaIdAndPeriodoAcademico(empresaId, periodo).stream()
-                .filter(vacante -> vacanteExcluidaId == null || !vacanteExcluidaId.equals(vacante.getId()))
-                .toList();
+                .findByEmpresaIdAndPeriodoAcademico(empresaId, periodo);
         List<Practica> practicas = practicaRepository
                 .findByEmpresaIdAndPeriodoAcademico(empresaId, periodo);
+        return calcularCompromisos(vacantes, practicas, vacanteExcluidaId);
+    }
+
+    private Compromisos calcularCompromisos(List<VacantePractica> vacantesEmpresa, List<Practica> practicas,
+                                              Integer vacanteExcluidaId) {
+        List<VacantePractica> vacantes = vacantesEmpresa.stream()
+                .filter(vacante -> vacanteExcluidaId == null || !vacanteExcluidaId.equals(vacante.getId()))
+                .toList();
 
         Map<String, Integer> reservadosPorCarrera = new HashMap<>();
         int reservadosTotales = 0;

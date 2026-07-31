@@ -99,11 +99,13 @@ export class DocumentoService {
     proceso?: 'GENERAL' | 'PRACTICAS' | 'VINCULACION' | 'TODOS';
     estado?: string;
     carrera?: string;
+    estudianteId?: number;
   }): Observable<DocEstudiante[]> {
     const params: Record<string, string> = {};
     if (filtros?.proceso && filtros.proceso !== 'TODOS') params['proceso'] = filtros.proceso;
     if (filtros?.estado && filtros.estado !== 'TODOS') params['estado'] = filtros.estado;
     if (filtros?.carrera && filtros.carrera !== 'TODOS') params['carrera'] = filtros.carrera;
+    if (filtros?.estudianteId != null) params['estudianteId'] = String(filtros.estudianteId);
     return this.http.get<DocEstudiante[]>(`${this.apiUrl}/revision`, { params });
   }
 
