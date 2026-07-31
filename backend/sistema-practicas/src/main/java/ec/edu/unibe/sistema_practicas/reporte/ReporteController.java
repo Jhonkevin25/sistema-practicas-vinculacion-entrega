@@ -311,7 +311,7 @@ public class ReporteController {
     // paginación real de BD requeriría reescribir ese cálculo como
     // Specification/@Query, lo cual excede el alcance de esta optimización.
     @GetMapping("/asignaciones/paginado")
-    public ec.edu.unibe.sistema_practicas.paginacion.PaginaResponse<AsignacionReporte> asignacionesPaginadas(
+    public ReportePaginaResponse<AsignacionReporte> asignacionesPaginadas(
             Authentication authentication,
             @RequestParam(required = false) String periodo,
             @RequestParam(required = false) String carrera,
@@ -320,11 +320,13 @@ public class ReporteController {
             @RequestParam(defaultValue = "0") int pagina,
             @RequestParam(defaultValue = "20") int tamano) {
         List<AsignacionReporte> filas = asignaciones(authentication, periodo, carrera, proceso, entidad);
-        return ec.edu.unibe.sistema_practicas.paginacion.PaginaResponse.deLista(filas, pagina, tamano);
+        long valorPrincipal = filas.stream().filter(f -> "en_curso".equalsIgnoreCase(f.estado())).count();
+        long valorSecundario = filas.stream().mapToLong(f -> f.horasCompletadas() == null ? 0 : f.horasCompletadas()).sum();
+        return ReportePaginaResponse.deLista(filas, pagina, tamano, valorPrincipal, valorSecundario);
     }
 
     @GetMapping("/cupos/paginado")
-    public ec.edu.unibe.sistema_practicas.paginacion.PaginaResponse<CupoReporte> cuposPaginados(
+    public ReportePaginaResponse<CupoReporte> cuposPaginados(
             Authentication authentication,
             @RequestParam(required = false) String periodo,
             @RequestParam(required = false) String carrera,
@@ -333,11 +335,13 @@ public class ReporteController {
             @RequestParam(defaultValue = "0") int pagina,
             @RequestParam(defaultValue = "20") int tamano) {
         List<CupoReporte> filas = cupos(authentication, periodo, carrera, proceso, entidad);
-        return ec.edu.unibe.sistema_practicas.paginacion.PaginaResponse.deLista(filas, pagina, tamano);
+        long valorPrincipal = filas.stream().mapToLong(f -> f.cuposUsados() == null ? 0 : f.cuposUsados()).sum();
+        long valorSecundario = filas.stream().mapToLong(f -> f.cuposDisponibles() == null ? 0 : f.cuposDisponibles()).sum();
+        return ReportePaginaResponse.deLista(filas, pagina, tamano, valorPrincipal, valorSecundario);
     }
 
     @GetMapping("/riesgos/paginado")
-    public ec.edu.unibe.sistema_practicas.paginacion.PaginaResponse<RiesgoReporte> riesgosPaginados(
+    public ReportePaginaResponse<RiesgoReporte> riesgosPaginados(
             Authentication authentication,
             @RequestParam(required = false) String periodo,
             @RequestParam(required = false) String carrera,
@@ -346,11 +350,13 @@ public class ReporteController {
             @RequestParam(defaultValue = "0") int pagina,
             @RequestParam(defaultValue = "20") int tamano) {
         List<RiesgoReporte> filas = riesgos(authentication, periodo, carrera, proceso, entidad);
-        return ec.edu.unibe.sistema_practicas.paginacion.PaginaResponse.deLista(filas, pagina, tamano);
+        long valorPrincipal = filas.stream().filter(f -> "ALTO".equals(f.nivel())).count();
+        long valorSecundario = filas.stream().mapToLong(f -> f.bitacorasObservadas() == null ? 0 : f.bitacorasObservadas()).sum();
+        return ReportePaginaResponse.deLista(filas, pagina, tamano, valorPrincipal, valorSecundario);
     }
 
     @GetMapping("/cierres/paginado")
-    public ec.edu.unibe.sistema_practicas.paginacion.PaginaResponse<CierreReporte> cierresPaginados(
+    public ReportePaginaResponse<CierreReporte> cierresPaginados(
             Authentication authentication,
             @RequestParam(required = false) String periodo,
             @RequestParam(required = false) String carrera,
@@ -359,7 +365,9 @@ public class ReporteController {
             @RequestParam(defaultValue = "0") int pagina,
             @RequestParam(defaultValue = "20") int tamano) {
         List<CierreReporte> filas = cierres(authentication, periodo, carrera, proceso, entidad);
-        return ec.edu.unibe.sistema_practicas.paginacion.PaginaResponse.deLista(filas, pagina, tamano);
+        long valorPrincipal = filas.stream().filter(f -> Boolean.TRUE.equals(f.cerrado())).count();
+        long valorSecundario = filas.stream().filter(f -> Boolean.TRUE.equals(f.cumpleHoras())).count();
+        return ReportePaginaResponse.deLista(filas, pagina, tamano, valorPrincipal, valorSecundario);
     }
 
     @GetMapping("/exportar")

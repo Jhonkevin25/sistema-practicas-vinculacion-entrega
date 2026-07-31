@@ -75,6 +75,16 @@ export interface CupoEntidadReporte {
   disponibles: number;
 }
 
+// Fase 55: envelope propio de los 4 listados paginados de Reportes. A
+// diferencia de Paginado<T> (genérico), este trae valorPrincipal/
+// valorSecundario calculados en el backend sobre TODO el universo filtrado,
+// no solo sobre la página visible — evita KPIs incorrectos cuando hay más
+// filas que las que caben en una página.
+export interface ReportePaginado<T> extends Paginado<T> {
+  valorPrincipal: number;
+  valorSecundario: number;
+}
+
 export interface CierreReporte {
   proceso: string;
   expedienteId: number;
@@ -119,40 +129,40 @@ export class ReporteService {
     return this.http.get<AsignacionReporte[]>(`${this.apiUrl}/asignaciones`, { params: this.params(filtros) });
   }
 
-  asignacionesPaginadas(pagina: number, tamano: number, filtros: FiltrosReporte): Observable<Paginado<AsignacionReporte>> {
+  asignacionesPaginadas(pagina: number, tamano: number, filtros: FiltrosReporte): Observable<ReportePaginado<AsignacionReporte>> {
     let httpParams = this.params(filtros);
     httpParams = httpParams.set('pagina', pagina.toString()).set('tamano', tamano.toString());
-    return this.http.get<Paginado<AsignacionReporte>>(`${this.apiUrl}/asignaciones/paginado`, { params: httpParams });
+    return this.http.get<ReportePaginado<AsignacionReporte>>(`${this.apiUrl}/asignaciones/paginado`, { params: httpParams });
   }
 
   cupos(filtros: FiltrosReporte): Observable<CupoReporte[]> {
     return this.http.get<CupoReporte[]>(`${this.apiUrl}/cupos`, { params: this.params(filtros) });
   }
 
-  cuposPaginados(pagina: number, tamano: number, filtros: FiltrosReporte): Observable<Paginado<CupoReporte>> {
+  cuposPaginados(pagina: number, tamano: number, filtros: FiltrosReporte): Observable<ReportePaginado<CupoReporte>> {
     let httpParams = this.params(filtros);
     httpParams = httpParams.set('pagina', pagina.toString()).set('tamano', tamano.toString());
-    return this.http.get<Paginado<CupoReporte>>(`${this.apiUrl}/cupos/paginado`, { params: httpParams });
+    return this.http.get<ReportePaginado<CupoReporte>>(`${this.apiUrl}/cupos/paginado`, { params: httpParams });
   }
 
   riesgos(filtros: FiltrosReporte): Observable<RiesgoReporte[]> {
     return this.http.get<RiesgoReporte[]>(`${this.apiUrl}/riesgos`, { params: this.params(filtros) });
   }
 
-  riesgosPaginados(pagina: number, tamano: number, filtros: FiltrosReporte): Observable<Paginado<RiesgoReporte>> {
+  riesgosPaginados(pagina: number, tamano: number, filtros: FiltrosReporte): Observable<ReportePaginado<RiesgoReporte>> {
     let httpParams = this.params(filtros);
     httpParams = httpParams.set('pagina', pagina.toString()).set('tamano', tamano.toString());
-    return this.http.get<Paginado<RiesgoReporte>>(`${this.apiUrl}/riesgos/paginado`, { params: httpParams });
+    return this.http.get<ReportePaginado<RiesgoReporte>>(`${this.apiUrl}/riesgos/paginado`, { params: httpParams });
   }
 
   cierres(filtros: FiltrosReporte): Observable<CierreReporte[]> {
     return this.http.get<CierreReporte[]>(`${this.apiUrl}/cierres`, { params: this.params(filtros) });
   }
 
-  cierresPaginados(pagina: number, tamano: number, filtros: FiltrosReporte): Observable<Paginado<CierreReporte>> {
+  cierresPaginados(pagina: number, tamano: number, filtros: FiltrosReporte): Observable<ReportePaginado<CierreReporte>> {
     let httpParams = this.params(filtros);
     httpParams = httpParams.set('pagina', pagina.toString()).set('tamano', tamano.toString());
-    return this.http.get<Paginado<CierreReporte>>(`${this.apiUrl}/cierres/paginado`, { params: httpParams });
+    return this.http.get<ReportePaginado<CierreReporte>>(`${this.apiUrl}/cierres/paginado`, { params: httpParams });
   }
 
   // Conteos ya agregados en el backend (respeta el alcance del coordinador)

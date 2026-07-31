@@ -8,6 +8,7 @@ import {
   CupoReporte,
   FiltrosReporte,
   ProcesoReporte,
+  ReportePaginado,
   ReporteService,
   RiesgoReporte,
   TipoReporte
@@ -15,7 +16,7 @@ import {
 import { ToastService } from '../../core/services/toast.service';
 import { ExpedienteService } from '../../core/services/expediente.service';
 import { PaginadorComponent } from '../shared/paginador/paginador';
-import { Paginado, TAMANO_PAGINA_DEFECTO } from '../../core/services/paginacion';
+import { TAMANO_PAGINA_DEFECTO } from '../../core/services/paginacion';
 
 @Component({
   selector: 'app-reportes',
@@ -157,41 +158,19 @@ export class ReportesComponent {
     };
   }
 
-  private ejecutarCarga<T>(request: Observable<Paginado<T>>, actualizar: (pag: Paginado<T>) => void): void {
+  private ejecutarCarga<T>(request: Observable<ReportePaginado<T>>, actualizar: (pag: ReportePaginado<T>) => void): void {
     request.subscribe({
       next: pag => {
         actualizar(pag);
         this.totalElementos.set(pag.totalElementos);
         this.totalPaginas.set(pag.totalPaginas);
-        
-        // Obtener totales globales que vienen en la respuesta (el backend tiene que enviarlos en un DTO adecuado
-        // o si no se pueden calcular a partir del contenido de la página, pero como la página es parcial,
-        // esto requiere que el backend devuelva el total. Por ahora, el backend devuelve PaginaResponse normal.
-        // Dado el esquema híbrido del backend, los elementos están todos en memoria y el PaginaResponse 
-        // tiene todos los datos que necesitamos para calcular en memoria, excepto que sólo devuelve una "página".
-        // Sin embargo, si es necesario lo simplificamos y no mostramos KPIs de toda la DB sino de la página).
-        // TODO: Para mantener el funcionamiento del UI, en los KPIs calculamos respecto a los elementos de la página.
-        if (this.tipo() === 'ASIGNACIONES') {
-          const asig = pag.contenido as unknown as AsignacionReporte[];
-          this.totalGlobal.set(pag.totalElementos);
-          this.valorPrincipalGlobal.set(asig.filter(fila => fila.estado?.toLowerCase() === 'en_curso').length);
-          this.valorSecundarioGlobal.set(asig.reduce((total, fila) => total + fila.horasCompletadas, 0));
-        } else if (this.tipo() === 'CUPOS') {
-          const cupo = pag.contenido as unknown as CupoReporte[];
-          this.totalGlobal.set(pag.totalElementos);
-          this.valorPrincipalGlobal.set(cupo.reduce((total, fila) => total + fila.cuposUsados, 0));
-          this.valorSecundarioGlobal.set(cupo.reduce((total, fila) => total + fila.cuposDisponibles, 0));
-        } else if (this.tipo() === 'RIESGOS') {
-          const riesgo = pag.contenido as unknown as RiesgoReporte[];
-          this.totalGlobal.set(pag.totalElementos);
-          this.valorPrincipalGlobal.set(riesgo.filter(fila => fila.nivel === 'ALTO').length);
-          this.valorSecundarioGlobal.set(riesgo.reduce((total, fila) => total + fila.bitacorasObservadas, 0));
-        } else {
-          const cierre = pag.contenido as unknown as CierreReporte[];
-          this.totalGlobal.set(pag.totalElementos);
-          this.valorPrincipalGlobal.set(cierre.filter(fila => fila.cerrado).length);
-          this.valorSecundarioGlobal.set(cierre.filter(fila => fila.cumpleHoras).length);
-        }
+
+        // Los KPIs (valorPrincipal/valorSecundario) vienen del backend ya
+        // calculados sobre TODO el universo filtrado, no solo la página
+        // visible (ver ReportePaginaResponse en el backend).
+        this.totalGlobal.set(pag.totalElementos);
+        this.valorPrincipalGlobal.set(pag.valorPrincipal);
+        this.valorSecundarioGlobal.set(pag.valorSecundario);
 
         this.cargando.set(false);
       },
