@@ -63,7 +63,7 @@ export class BitacoraService {
     return this.http.get<Bitacora[]>(`${this.apiUrl}/estudiante/${estudianteId}`);
   }
 
-  private clearCaches(): void {
+  clearCaches(): void {
     this.cacheAll$ = null;
     this.cacheMine$ = null;
   }

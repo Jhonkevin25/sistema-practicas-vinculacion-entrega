@@ -1,0 +1,108 @@
+<div class="space-y-6 max-w-2xl">
+  <!-- Section Header -->
+  <div class="bg-white p-5 border border-slate-200 rounded-xl shadow-sm">
+    <h2 class="text-base font-bold text-unibe-blue uppercase tracking-wide">Mi Perfil</h2>
+    <p class="text-xs text-slate-500 font-medium">Tus datos registrados en el sistema. Solo puedes editar tu correo electrónico.</p>
+  </div>
+
+  <!-- Loading State -->
+  @if (loading()) {
+    <div class="flex justify-center items-center py-20 bg-white border border-slate-200 rounded-xl shadow-sm">
+      <svg class="animate-spin h-8 w-8 text-unibe-blue" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+      </svg>
+    </div>
+  } @else if (usuario(); as u) {
+    <!-- Datos de solo lectura -->
+    <div class="bg-white border border-slate-200 rounded-xl shadow-sm p-5 space-y-4">
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+        <div>
+          <span class="block text-[10px] font-bold uppercase text-slate-500 mb-1">Nombre completo</span>
+          <span class="block text-slate-800 font-semibold">{{ u.nombre }} {{ u.apellido }}</span>
+        </div>
+        <div>
+          <span class="block text-[10px] font-bold uppercase text-slate-500 mb-1">Cédula</span>
+          <span class="block text-slate-800 font-semibold">{{ u.cedula || '—' }}</span>
+        </div>
+        <div>
+          <span class="block text-[10px] font-bold uppercase text-slate-500 mb-1">Rol</span>
+          <span class="inline-block px-2 py-0.5 rounded-full bg-unibe-blue/10 text-unibe-blue font-bold uppercase tracking-wide text-[10px]">{{ etiquetaRol() }}</span>
+        </div>
+
+        @if (rol() === 'ESTUDIANTE') {
+          <div>
+            <span class="block text-[10px] font-bold uppercase text-slate-500 mb-1">Carrera</span>
+            <span class="block text-slate-800 font-semibold">{{ carrera() || '—' }}</span>
+          </div>
+        }
+
+        @if (rol() === 'TUTOR') {
+          <div>
+            <span class="block text-[10px] font-bold uppercase text-slate-500 mb-1">Área de tutoría</span>
+            <span class="block text-slate-800 font-semibold">{{ etiquetaTutorTipo() || '—' }}</span>
+          </div>
+        }
+
+        @if (rol() === 'COORDINADOR') {
+          <div class="sm:col-span-2">
+            <span class="block text-[10px] font-bold uppercase text-slate-500 mb-1">Carreras a cargo</span>
+            @if (carrerasCoordinador().length > 0) {
+              <div class="flex flex-wrap gap-1.5">
+                @for (c of carrerasCoordinador(); track c) {
+                  <span class="inline-block px-2 py-0.5 rounded-full bg-unibe-gold/15 text-unibe-blue font-semibold text-[10px]">{{ c }}</span>
+                }
+              </div>
+            } @else {
+              <span class="block text-slate-800 font-semibold">—</span>
+            }
+          </div>
+        }
+      </div>
+    </div>
+
+    <!-- Correo: unico campo editable -->
+    <div class="bg-white border border-slate-200 rounded-xl shadow-sm p-5 space-y-3">
+      <span class="block text-[10px] font-bold uppercase text-slate-500">Correo electrónico</span>
+      <p class="text-[11px] text-slate-500">Si tu correo está mal escrito o ya no lo utilizas, puedes actualizarlo aquí.</p>
+      @if (u.fuente === 'CSV_UNIVERSIDAD' || u.fuente === 'API_UNIVERSIDAD') {
+        <p class="text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+          Tu cuenta se sincroniza con los sistemas de la universidad: si el correo institucional cambia allá, esta sincronización puede volver a actualizarlo aquí.
+        </p>
+      }
+      <div class="flex flex-col sm:flex-row gap-3 sm:items-start">
+        <div class="flex-1">
+          <input
+            type="email"
+            name="nuevoCorreo"
+            [(ngModel)]="nuevoCorreo"
+            placeholder="correo@unibe.edu.ec"
+            class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs outline-none focus:border-unibe-blue"
+          />
+          @if (correoModificado() && !correoValido()) {
+            <p class="mt-1 text-[10px] text-red-600 font-medium">Ingresa un correo electrónico válido (ej. usuario&#64;unibe.edu.ec).</p>
+          }
+        </div>
+        <div class="flex gap-2 shrink-0">
+          @if (correoModificado()) {
+            <button
+              type="button"
+              (click)="cancelarEdicionCorreo()"
+              class="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-bold rounded-lg transition-all"
+            >
+              Cancelar
+            </button>
+          }
+          <button
+            type="button"
+            (click)="guardarCorreo()"
+            [disabled]="!correoModificado() || !correoValido() || guardando()"
+            class="px-4 py-2 bg-unibe-blue hover:bg-unibe-blue-hover disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-bold rounded-lg transition-all"
+          >
+            {{ guardando() ? 'Guardando…' : 'Guardar correo' }}
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+</div>

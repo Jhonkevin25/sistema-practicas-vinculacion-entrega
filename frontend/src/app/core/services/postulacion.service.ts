@@ -43,7 +43,7 @@ export class PostulacionService {
     return this.cacheMine$;
   }
 
-  private clearCaches(): void {
+  clearCaches(): void {
     this.cacheAll$ = null;
     this.cacheMine$ = null;
   }

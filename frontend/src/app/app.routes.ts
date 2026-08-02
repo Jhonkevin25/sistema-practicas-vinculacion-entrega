@@ -24,6 +24,7 @@ export const routes: Routes = [
       { path: 'correos', loadComponent: () => import('./dashboard/correos/correos').then(m => m.CorreosComponent) },
       { path: 'reportes', loadComponent: () => import('./dashboard/reportes/reportes').then(m => m.ReportesComponent) },
       { path: 'seguimiento', loadComponent: () => import('./dashboard/seguimiento/seguimiento').then(m => m.SeguimientoComponent) },
+      { path: 'perfil', loadComponent: () => import('./dashboard/perfil/perfil').then(m => m.PerfilComponent) },
       { path: '', redirectTo: 'overview', pathMatch: 'full' }
     ]
   },

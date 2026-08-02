@@ -1,5 +1,6 @@
 package ec.edu.unibe.sistema_practicas.usuario;
 
+import ec.edu.unibe.sistema_practicas.config.JwtTokenProvider;
 import ec.edu.unibe.sistema_practicas.estudiante.EstudianteRepository;
 import ec.edu.unibe.sistema_practicas.notificacion.CorreoNotificacionComponent;
 import ec.edu.unibe.sistema_practicas.paginacion.PaginaResponse;
@@ -12,7 +13,9 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 import jakarta.validation.Valid;
@@ -35,6 +38,7 @@ public class UsuarioController {
     private final EstudianteRepository estudianteRepository;
     private final PasswordEncoder passwordEncoder;
     private final CorreoNotificacionComponent correoNotificacionComponent;
+    private final JwtTokenProvider jwtTokenProvider;
 
     @GetMapping
     public List<Usuario> getAll() {
@@ -115,6 +119,53 @@ public class UsuarioController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
         return ResponseEntity.ok(usuario);
+    }
+
+    // El propio usuario solo puede editar su correo; el resto de sus datos
+    // (nombre, cedula, carrera, etc.) quedan de solo lectura en su perfil.
+    // El JWT usa el correo como clave de autenticacion (JwtAuthenticationFilter
+    // busca al usuario por el email del token): si no se reemite un token con
+    // el correo nuevo, la sesion activa deja de encontrar al usuario en la
+    // siguiente peticion y el cliente queda desautenticado sin aviso.
+    @PatchMapping("/me")
+    public ResponseEntity<ActualizarEmailResponse> updateMe(@AuthenticationPrincipal Usuario actor,
+                                                              @RequestBody ActualizarEmailRequest body) {
+        if (actor == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        // Se normaliza a minusculas igual que en el login: evita que un cambio
+        // de solo-mayusculas (mismo correo) dispare una reemision de token que
+        // invalide sesiones abiertas en otras pestañas/dispositivos sin motivo.
+        String email = body.email() == null ? null : body.email().trim().toLowerCase(Locale.ROOT);
+        if (email == null || email.isBlank()) {
+            throw new IllegalArgumentException("El correo es obligatorio.");
+        }
+        if (!email.matches("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$")) {
+            throw new IllegalArgumentException("El correo no tiene un formato válido.");
+        }
+        usuarioRepository.findByEmailIgnoreCase(email)
+                .filter(existente -> !existente.getId().equals(actor.getId()))
+                .ifPresent(existente -> {
+                    throw new IllegalArgumentException("Ese correo ya está en uso.");
+                });
+
+        Usuario usuario = usuarioRepository.findById(actor.getId())
+                .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado."));
+        usuario.setEmail(email);
+        usuario.setUpdatedAt(LocalDateTime.now());
+        Usuario guardado = usuarioRepository.save(usuario);
+
+        // El rol se toma de la sesion ya autenticada (el authority que puso
+        // JwtAuthenticationFilter), no de usuario.getRoles(): ese Set no tiene
+        // orden garantizado y para una cuenta con varios roles podria reemitir
+        // el token con un rol distinto al que inicio sesion.
+        String rol = SecurityContextHolder.getContext().getAuthentication().getAuthorities().stream()
+                .findFirst()
+                .map(GrantedAuthority::getAuthority)
+                .map(autoridad -> autoridad.replaceFirst("^ROLE_", ""))
+                .orElse("ESTUDIANTE");
+        String token = jwtTokenProvider.generateToken(guardado.getEmail(), rol);
+        return ResponseEntity.ok(new ActualizarEmailResponse(guardado, token));
     }
 
     @GetMapping("/{id}")
@@ -270,6 +321,10 @@ public class UsuarioController {
                                Boolean activo, String tutorTipo, List<RolResumen> roles) {}
 
     public record CandidatoEstudiante(Integer id, String nombre, String apellido, String email) {}
+
+    public record ActualizarEmailRequest(String email) {}
+
+    public record ActualizarEmailResponse(Usuario usuario, String token) {}
 
     public record RolResumen(String codigo) {}
 }

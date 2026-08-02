@@ -68,7 +68,12 @@
 
     <!-- User Profile Footer -->
     <div class="p-4 border-t border-white/10 bg-unibe-blue-hover/30">
-      <div class="flex items-center gap-3 p-2 mb-3 bg-white/10 rounded-lg border border-white/15">
+      <a
+        routerLink="/dashboard/perfil"
+        (click)="closeSidebar()"
+        title="Ver mi perfil"
+        class="flex items-center gap-3 p-2 mb-3 bg-white/10 hover:bg-white/15 rounded-lg border border-white/15 transition-colors"
+      >
         <div class="w-10 h-10 rounded-lg bg-unibe-gold border border-unibe-gold flex items-center justify-center text-unibe-blue font-bold">
           {{ userName().substring(0, 1) }}
         </div>
@@ -79,7 +84,7 @@
             <span class="text-[9px] text-unibe-gold truncate block mt-0.5" [title]="getCoordinatorScope()">Alcance: {{ getCoordinatorScope() }}</span>
           }
         </div>
-      </div>
+      </a>
       <button
         (click)="logout()"
         class="w-full py-2 px-3 bg-red-700 hover:bg-red-800 text-white text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-2 border border-red-600"

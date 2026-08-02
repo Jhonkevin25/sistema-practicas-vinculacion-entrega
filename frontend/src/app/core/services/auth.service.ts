@@ -5,6 +5,13 @@ import { Observable, of, tap } from 'rxjs';
 import { catchError, map, switchMap } from 'rxjs/operators';
 import { PeriodoAcademicoService } from './periodo-academico.service';
 import { CarreraService } from './carrera.service';
+import { UsuarioService } from './usuario.service';
+import { EstudianteService } from './estudiante.service';
+import { PracticaService } from './practica.service';
+import { VinculacionService } from './vinculacion.service';
+import { BitacoraService } from './bitacora.service';
+import { PostulacionService } from './postulacion.service';
+import { AsistenciaService } from './asistencia.service';
 import { contextoValidacionSesion } from '../interceptors/http-context-tokens';
 
 export interface AlcanceCoordinador {
@@ -42,6 +49,13 @@ export class AuthService {
   private readonly apiUrl = '/api/auth';
   private readonly periodoAcademicoService = inject(PeriodoAcademicoService);
   private readonly carreraService = inject(CarreraService);
+  private readonly usuarioService = inject(UsuarioService);
+  private readonly estudianteService = inject(EstudianteService);
+  private readonly practicaService = inject(PracticaService);
+  private readonly vinculacionService = inject(VinculacionService);
+  private readonly bitacoraService = inject(BitacoraService);
+  private readonly postulacionService = inject(PostulacionService);
+  private readonly asistenciaService = inject(AsistenciaService);
 
   // Signals for auth state management
   readonly currentUser = signal<AuthResponse | null>(null);
@@ -145,7 +159,24 @@ export class AuthService {
     this.carrerasAsignadas.set([]);
     this.carreraService.invalidar();
     this.periodoAcademicoService.reset();
+    this.usuarioService.clearCache();
+    this.estudianteService.clearCache();
+    this.practicaService.clearCache();
+    this.vinculacionService.clearCache();
+    this.bitacoraService.clearCaches();
+    this.postulacionService.clearCaches();
+    this.asistenciaService.clearCaches();
     this.router.navigate(['/login']);
+  }
+
+  // El backend reemite el JWT al cambiar el propio correo (la autenticacion
+  // busca al usuario por el email del token). Aquí se refresca la sesión
+  // local con el token y correo nuevos sin forzar un logout/login.
+  actualizarCorreoSesion(email: string, token: string): void {
+    const user = this.currentUser();
+    if (user) {
+      this.saveSession({ ...user, email, token });
+    }
   }
 
   isLoggedIn(): boolean {

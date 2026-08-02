@@ -45,7 +45,7 @@ export class AsistenciaService {
     return this.http.get<Asistencia[]>(`${this.apiUrl}/vinculacion/${vinculacionId}`);
   }
 
-  private clearCaches(): void {
+  clearCaches(): void {
     this.cacheAll$ = null;
     this.cacheMine$ = null;
   }

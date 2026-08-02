@@ -63,6 +63,9 @@ public class SecurityConfig {
                 // Registro propio del usuario autenticado (tutor/estudiante necesitan su id)
                 .requestMatchers(HttpMethod.GET, "/api/usuarios/me", "/api/estudiantes/me")
                     .hasAnyRole(ADMIN, COORDINADOR, TUTOR, ESTUDIANTE)
+                // Perfil propio: el dueño de la cuenta solo puede editar su correo
+                .requestMatchers(HttpMethod.PATCH, "/api/usuarios/me")
+                    .hasAnyRole(ADMIN, COORDINADOR, TUTOR, ESTUDIANTE)
 
                 // Coordinacion recibe solo el directorio minimo de tutores;
                 // el listado completo y la administracion quedan en ADMIN.

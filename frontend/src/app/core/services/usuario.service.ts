@@ -4,6 +4,11 @@ import { Observable, shareReplay } from 'rxjs';
 import { Paginado, paramsPaginado } from './paginacion';
 import { SKIP_ERROR_TOAST } from '../interceptors/http-context-tokens';
 
+export interface ActualizarEmailResponse {
+  usuario: Usuario;
+  token: string;
+}
+
 export interface Usuario {
   id?: number;
   cedula?: string;
@@ -84,6 +89,17 @@ export class UsuarioService {
       this.cacheMe$ = this.http.get<Usuario>(`${this.apiUrl}/me`).pipe(shareReplay(1));
     }
     return this.cacheMe$;
+  }
+
+  // El propio usuario solo puede editar su correo desde "Mi perfil". El
+  // backend reemite el JWT con el correo nuevo porque la autenticacion
+  // busca al usuario por el email del token: sin token nuevo, la sesion
+  // activa quedaria desautenticada en la siguiente peticion.
+  updateMiCorreo(email: string): Observable<ActualizarEmailResponse> {
+    this.clearCache();
+    return this.http.patch<ActualizarEmailResponse>(`${this.apiUrl}/me`, { email }, {
+      context: new HttpContext().set(SKIP_ERROR_TOAST, true)
+    });
   }
 
   getById(id: number): Observable<Usuario> {

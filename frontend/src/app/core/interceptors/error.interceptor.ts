@@ -14,11 +14,27 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
   return next(req).pipe(
     catchError((error: HttpErrorResponse) => {
       let userFriendlyMessage = 'Ha ocurrido un error inesperado. Por favor, intenta de nuevo.';
-      const debeLimpiarSesion = req.context.get(CLEAR_SESSION_ON_AUTH_ERROR)
+
+      // Una peticion en curso puede llevar un token que ya fue reemplazado
+      // (p. ej. al cambiar el propio correo se reemite el JWT): si el token
+      // de esta peticion ya no es el vigente, el 401 es una carrera con la
+      // renovacion de sesion, no una sesion realmente invalida.
+      const tokenDeLaPeticion = req.headers.get('Authorization')?.replace('Bearer ', '') ?? null;
+      const tokenVigente = localStorage.getItem('token');
+      const peticionSuperada = error.status === 401
+        && tokenDeLaPeticion !== null
+        && tokenVigente !== null
+        && tokenDeLaPeticion !== tokenVigente;
+
+      const debeLimpiarSesion = !peticionSuperada && req.context.get(CLEAR_SESSION_ON_AUTH_ERROR)
         && (error.status === 401 || error.status === 403);
 
       if (debeLimpiarSesion) {
         authService.logout();
+      }
+
+      if (peticionSuperada) {
+        return throwError(() => error);
       }
 
       if (error.status === 400) {

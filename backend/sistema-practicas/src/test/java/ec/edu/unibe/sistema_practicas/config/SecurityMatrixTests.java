@@ -32,6 +32,7 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -88,6 +89,10 @@ class SecurityMatrixTests {
         mvc.perform(post("/api/importaciones/estudiantes")).andExpect(status().is4xxClientError());
         mvc.perform(get("/api/reportes/asignaciones")).andExpect(status().is4xxClientError());
         mvc.perform(post("/api/correos/1/reintentar")).andExpect(status().is4xxClientError());
+        mvc.perform(patch("/api/usuarios/me")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"email\":\"nuevo@unibe.edu.ec\"}"))
+           .andExpect(status().is4xxClientError());
     }
 
     @Test
@@ -1249,6 +1254,28 @@ class SecurityMatrixTests {
            .andExpect(status().isForbidden());
         mvc.perform(get("/api/reportes/asignaciones").with(user("x").roles("EMPRESA")))
            .andExpect(status().isForbidden());
+        mvc.perform(patch("/api/usuarios/me").with(user("x").roles("EMPRESA"))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"email\":\"nuevo@unibe.edu.ec\"}"))
+           .andExpect(status().isForbidden());
+    }
+
+    // Positivo: los 4 roles permitidos deben poder llegar al controlador
+    // (400 por cuerpo vacio, no 403 por la matriz). Se manda un cuerpo
+    // invalido a proposito para no escribir en la base de Supabase. Requiere
+    // una entidad Usuario real (via el helper usuario(...)): el controlador
+    // usa @AuthenticationPrincipal Usuario, que no resuelve con user().roles().
+    @Test
+    void los_cuatro_roles_permitidos_llegan_al_endpoint_de_actualizar_mi_correo() throws Exception {
+        for (String rol : List.of("ADMIN", "COORDINADOR", "TUTOR", "ESTUDIANTE")) {
+            Usuario titular = usuarioRepository.findDistinctByRoles_CodigoAndActivoTrueOrderByApellidoAscNombreAsc(rol)
+                    .stream().findFirst().orElse(null);
+            Assumptions.assumeTrue(titular != null, "No hay usuario activo con rol " + rol + " para probar el endpoint");
+            mvc.perform(patch("/api/usuarios/me").with(usuario(titular, rol))
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("{}"))
+               .andExpect(status().isBadRequest());
+        }
     }
 
     @Test
