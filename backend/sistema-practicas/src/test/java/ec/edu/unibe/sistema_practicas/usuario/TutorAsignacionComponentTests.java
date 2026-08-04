@@ -2,9 +2,12 @@ package ec.edu.unibe.sistema_practicas.usuario;
 
 import ec.edu.unibe.sistema_practicas.carrera.Carrera;
 import ec.edu.unibe.sistema_practicas.empresa.Empresa;
+import ec.edu.unibe.sistema_practicas.fundacion.Fundacion;
 import ec.edu.unibe.sistema_practicas.rol.Rol;
 import ec.edu.unibe.sistema_practicas.tutorempresa.TutorEmpresa;
 import ec.edu.unibe.sistema_practicas.tutorempresa.TutorEmpresaRepository;
+import ec.edu.unibe.sistema_practicas.tutorfundacion.TutorFundacion;
+import ec.edu.unibe.sistema_practicas.tutorfundacion.TutorFundacionRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -23,6 +26,7 @@ class TutorAsignacionComponentTests {
 
     @Mock private UsuarioRepository usuarioRepository;
     @Mock private TutorEmpresaRepository tutorEmpresaRepository;
+    @Mock private TutorFundacionRepository tutorFundacionRepository;
     @InjectMocks private TutorAsignacionComponent component;
 
     @Test
@@ -76,6 +80,43 @@ class TutorAsignacionComponentTests {
                 () -> component.exigirValido(referencia(10), "PRACTICAS", empresa, "Derecho"));
     }
 
+    @Test
+    void acepta_tutor_externo_de_la_fundacion_y_carrera_del_proyecto() {
+        Usuario tutor = tutor(11, "VINCULACION", true, "TUTOR");
+        Fundacion fundacion = fundacion(5);
+        TutorFundacion vinculo = vinculoFundacion(tutor, fundacion, true, "Ingeniería en Software", "Derecho");
+        when(usuarioRepository.findById(11)).thenReturn(Optional.of(tutor));
+        when(tutorFundacionRepository.findByUsuarioIdAndFundacionId(11, 5)).thenReturn(Optional.of(vinculo));
+
+        assertEquals(tutor, component.exigirValido(
+                referencia(11), "VINCULACION", fundacion, "Ingenieria en Software"));
+        assertEquals(tutor, component.exigirValido(
+                referencia(11), "VINCULACION", fundacion, "Derecho"));
+    }
+
+    @Test
+    void rechaza_tutor_de_otra_fundacion_o_sin_la_carrera() {
+        Usuario tutor = tutor(12, "VINCULACION", true, "TUTOR");
+        Fundacion fundacion = fundacion(6);
+        when(usuarioRepository.findById(12)).thenReturn(Optional.of(tutor));
+        when(tutorFundacionRepository.findByUsuarioIdAndFundacionId(12, 6)).thenReturn(Optional.empty());
+        assertThrows(IllegalArgumentException.class,
+                () -> component.exigirValido(referencia(12), "VINCULACION", fundacion, "Derecho"));
+
+        TutorFundacion vinculo = vinculoFundacion(tutor, fundacion, true, "Administración de Empresas");
+        when(tutorFundacionRepository.findByUsuarioIdAndFundacionId(12, 6)).thenReturn(Optional.of(vinculo));
+        assertThrows(IllegalArgumentException.class,
+                () -> component.exigirValido(referencia(12), "VINCULACION", fundacion, "Derecho"));
+    }
+
+    @Test
+    void proceso_practicas_ignora_la_validacion_de_fundacion() {
+        Usuario tutor = tutor(13, "PRACTICAS", true, "TUTOR");
+        when(usuarioRepository.findById(13)).thenReturn(Optional.of(tutor));
+
+        assertEquals(tutor, component.exigirValido(referencia(13), "PRACTICAS", (Fundacion) null, null));
+    }
+
     private Usuario referencia(int id) {
         Usuario usuario = new Usuario();
         usuario.setId(id);
@@ -97,6 +138,28 @@ class TutorAsignacionComponentTests {
         empresa.setId(id);
         empresa.setActivo(true);
         return empresa;
+    }
+
+    private Fundacion fundacion(int id) {
+        Fundacion fundacion = new Fundacion();
+        fundacion.setId(id);
+        fundacion.setActiva(true);
+        return fundacion;
+    }
+
+    private TutorFundacion vinculoFundacion(Usuario tutor, Fundacion fundacion, boolean activo, String... carreras) {
+        TutorFundacion vinculo = new TutorFundacion();
+        vinculo.setUsuario(tutor);
+        vinculo.setFundacion(fundacion);
+        vinculo.setActivo(activo);
+        Set<Carrera> cobertura = new java.util.LinkedHashSet<>();
+        for (String nombre : carreras) {
+            Carrera carrera = new Carrera();
+            carrera.setNombre(nombre);
+            cobertura.add(carrera);
+        }
+        vinculo.setCarreras(cobertura);
+        return vinculo;
     }
 
     private TutorEmpresa vinculo(Usuario tutor, Empresa empresa, boolean activo, String... carreras) {

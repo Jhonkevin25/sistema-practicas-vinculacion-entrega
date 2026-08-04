@@ -28,12 +28,12 @@ public final class EmailPlantillaComponent {
      * @param contenidoHtml fragmento HTML ya armado por el componente que envía el correo
      *                       (párrafos, enlaces, etc.), tal cual se debe mostrar en el cuerpo.
      * @param baseUrl        URL base del frontend (dev o producción), usada para resolver el
-     *                       logo público en {@code ${baseUrl}/image/logo_unibe.png}.
+     *                       logo público en {@code ${baseUrl}/image/logo.png}.
      * @return el documento HTML completo, listo para usarse como cuerpo del correo.
      */
     public static String envolver(String contenidoHtml, String baseUrl) {
         String base = normalizarBaseUrl(baseUrl);
-        String logoUrl = base + "/image/logo_unibe.png";
+        String logoUrl = base + "/image/logo.png";
         String cuerpo = contenidoHtml == null ? "" : contenidoHtml;
 
         return """

@@ -31,6 +31,8 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -94,7 +96,8 @@ class PostulacionVinculacionControllerTests {
 
         when(postulacionRepository.findByIdForUpdate(10)).thenReturn(Optional.of(postulacion));
         when(estudianteRepository.findByIdForUpdate(3)).thenReturn(Optional.of(estudiante));
-        when(tutorAsignacionComponent.exigirValido(tutor, "VINCULACION")).thenReturn(tutor);
+        when(tutorAsignacionComponent.exigirValido(eq(tutor), eq("VINCULACION"), any(Fundacion.class), eq("Derecho")))
+                .thenReturn(tutor);
         when(vinculacionRepository.findByEstudianteId(3)).thenReturn(List.of());
         when(practicaRepository.findByEstudianteId(3)).thenReturn(List.of());
         when(proyectoRepository.findByIdForUpdate(5)).thenReturn(Optional.of(proyecto));

@@ -98,6 +98,7 @@
                 </td>
                 <td class="p-4 text-right space-x-2">
                   @if (authService.getRole() === 'ADMIN' || authService.getRole() === 'COORDINADOR') {
+                    <button (click)="openTutores(fund)" title="Ver tutores externos" class="px-2.5 py-2 text-[10px] font-bold text-slate-700 bg-slate-50 border border-slate-200 rounded-lg hover:bg-slate-100 transition-all">Tutores</button>
                     <button (click)="openConvenios(fund)" class="px-2.5 py-2 text-[10px] font-bold text-unibe-blue bg-blue-50 border border-blue-100 rounded-lg hover:bg-blue-100 transition-all">Convenios</button>
                   }
                   @if (isAdmin()) {
@@ -464,6 +465,188 @@
           }
         </div>
       </div>
+    </div>
+  }
+
+  @if (showTutoresModal()) {
+    <div class="fixed inset-0 z-50 !mt-0 flex items-center justify-center overflow-y-auto bg-slate-950/65 p-2 backdrop-blur-sm sm:p-4">
+      <section
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="titulo-tutores-fundacion"
+        class="flex max-h-[calc(100dvh-1rem)] w-full max-w-4xl flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-2xl sm:max-h-[calc(100dvh-2rem)]"
+      >
+        <header class="flex shrink-0 items-start justify-between gap-4 border-b border-slate-200 bg-slate-50 p-4 sm:p-5">
+          <div>
+            <h3 id="titulo-tutores-fundacion" class="text-sm font-bold uppercase text-unibe-blue">Tutores externos</h3>
+            <p class="mt-1 text-xs font-semibold text-slate-700">{{ selectedFundacionTutor()?.nombre }}</p>
+            <p class="mt-1 text-[10px] text-slate-500">Cada tutor solo podrá recibir estudiantes de las carreras marcadas para esta fundación.</p>
+          </div>
+          <button type="button" (click)="closeTutores()" aria-label="Cerrar tutores externos" class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-200">
+            <span aria-hidden="true" class="text-lg">×</span>
+          </button>
+        </header>
+
+        <div class="min-h-0 overflow-y-auto p-4 text-xs sm:p-6">
+          @if (loadingTutores()) {
+            <div class="flex min-h-36 items-center justify-center gap-3 text-slate-500">
+              <span class="h-5 w-5 animate-spin rounded-full border-2 border-slate-200 border-t-unibe-blue" aria-hidden="true"></span>
+              Cargando tutores de la fundación...
+            </div>
+          } @else {
+            <div class="mb-4 grid grid-cols-1 gap-3 rounded-lg border border-slate-200 bg-slate-50 p-3 sm:grid-cols-[minmax(0,1fr)_minmax(12rem,.35fr)]">
+              <label>
+                <span class="mb-1.5 block font-bold uppercase text-slate-600">Buscar tutor vinculado</span>
+                <input
+                  type="search"
+                  [ngModel]="filtroTutorTexto()"
+                  (ngModelChange)="filtroTutorTexto.set($event)"
+                  placeholder="Nombre, correo o cargo..."
+                  class="min-h-10 w-full rounded-lg border border-slate-300 bg-white px-3 outline-none focus:border-unibe-blue focus-visible:ring-2 focus-visible:ring-unibe-blue/20"
+                />
+              </label>
+              <label>
+                <span class="mb-1.5 block font-bold uppercase text-slate-600">Carrera</span>
+                <select
+                  [ngModel]="filtroTutorCarrera()"
+                  (ngModelChange)="filtroTutorCarrera.set($event)"
+                  class="min-h-10 w-full rounded-lg border border-slate-300 bg-white px-3 outline-none focus:border-unibe-blue"
+                >
+                  <option value="TODOS">Todas</option>
+                  @for (carrera of carrerasFiltroTutores(); track carrera) {
+                    <option [value]="carrera">{{ carrera }}</option>
+                  }
+                </select>
+              </label>
+              <p class="text-[10px] font-semibold text-slate-500 sm:col-span-2">
+                Mostrando {{ tutoresFundacionFiltrados().length }} de {{ tutoresFundacion().length }} tutores de {{ selectedFundacionTutor()?.nombre }}.
+              </p>
+            </div>
+
+            <div class="overflow-x-auto rounded-lg border border-slate-200">
+              <table class="w-full min-w-[680px] text-left">
+                <thead class="bg-slate-50 text-[10px] font-bold uppercase text-slate-500">
+                  <tr>
+                    <th class="p-3">Tutor</th>
+                    <th class="p-3">Cargo</th>
+                    <th class="p-3">Carreras habilitadas</th>
+                    <th class="p-3">Estado</th>
+                    @if (isAdmin()) { <th class="p-3 text-right">Acciones</th> }
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100">
+                  @for (vinculo of tutoresFundacionFiltrados(); track vinculo.id) {
+                    <tr>
+                      <td class="p-3">
+                        <span class="block font-bold text-slate-800">{{ vinculo.nombre }} {{ vinculo.apellido }}</span>
+                        <span class="mt-0.5 block text-[10px] text-slate-500">{{ vinculo.email || 'Registro histórico sin cuenta vinculada' }}</span>
+                      </td>
+                      <td class="p-3 text-slate-600">{{ vinculo.cargo || 'Sin cargo registrado' }}</td>
+                      <td class="p-3">
+                        <div class="flex max-w-sm flex-wrap gap-1.5">
+                          @for (carrera of vinculo.carreras; track carrera.id) {
+                            <span class="rounded border border-blue-100 bg-blue-50 px-2 py-1 text-[10px] font-semibold text-unibe-blue">{{ carrera.nombre }}</span>
+                          } @empty {
+                            <span class="text-[10px] font-semibold text-amber-700">Sin carreras: no asignable</span>
+                          }
+                        </div>
+                      </td>
+                      <td class="p-3">
+                        <span class="rounded-full border px-2 py-1 text-[10px] font-bold" [class]="vinculo.activo ? 'border-green-200 bg-green-50 text-green-700' : 'border-slate-200 bg-slate-100 text-slate-500'">
+                          {{ vinculo.activo ? 'Activo' : 'Inactivo' }}
+                        </span>
+                      </td>
+                      @if (isAdmin()) {
+                        <td class="p-3 text-right">
+                          <button type="button" (click)="editarTutorFundacion(vinculo)" class="mr-3 font-bold text-unibe-blue hover:underline">Editar</button>
+                          <button type="button" (click)="deleteTutorFundacion(vinculo)" class="font-bold text-red-600 hover:underline">Eliminar</button>
+                        </td>
+                      }
+                    </tr>
+                  } @empty {
+                    <tr>
+                      <td [attr.colspan]="isAdmin() ? 5 : 4" class="p-8 text-center text-slate-400">
+                        {{ tutoresFundacion().length === 0 ? 'Esta fundación todavía no tiene tutores externos configurados.' : 'No hay tutores que coincidan con los filtros seleccionados.' }}
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+
+            @if (isAdmin()) {
+              <form (ngSubmit)="saveTutorFundacion()" class="mt-6 space-y-5 border-t border-slate-200 pt-5">
+                <div class="flex items-center justify-between gap-4">
+                  <div>
+                    <h4 class="font-bold uppercase text-slate-800">{{ currentTutorFundacion.id ? 'Editar vínculo' : 'Vincular tutor' }}</h4>
+                    <p class="mt-1 text-[10px] text-slate-500">La cuenta debe existir previamente en Usuarios con rol Tutor y área Vinculación o Ambas.</p>
+                  </div>
+                  @if (currentTutorFundacion.id) {
+                    <button type="button" (click)="nuevoTutorFundacion()" class="font-bold text-unibe-blue">Nuevo vínculo</button>
+                  }
+                </div>
+
+                <label class="block">
+                  <span class="mb-2 block font-bold uppercase text-slate-600">Buscar cuenta disponible</span>
+                  <input
+                    type="search"
+                    [ngModel]="busquedaCuentaTutor()"
+                    (ngModelChange)="busquedaCuentaTutor.set($event)"
+                    name="busquedaCuentaTutor"
+                    placeholder="Nombre o correo institucional..."
+                    class="min-h-10 w-full rounded-lg border border-slate-300 bg-white px-3 outline-none focus:border-unibe-blue focus-visible:ring-2 focus-visible:ring-unibe-blue/20"
+                  />
+                  <span class="mt-1 block text-[10px] text-slate-500">{{ tutoresCandidatosDisponibles().length }} cuenta(s) disponible(s) para esta fundación.</span>
+                </label>
+
+                <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+                  <label>
+                    <span class="mb-2 block font-bold uppercase text-slate-600">Cuenta de tutor *</span>
+                    <select [(ngModel)]="currentTutorFundacion.tutorId" name="tutorFundacionUsuario" required class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 outline-none focus:border-unibe-blue">
+                      <option [ngValue]="null">Selecciona una cuenta...</option>
+                      @for (tutor of tutoresCandidatosDisponibles(); track tutor.id) {
+                        <option [ngValue]="tutor.id">{{ tutor.nombre }} {{ tutor.apellido }} · {{ tutor.email }}</option>
+                      } @empty {
+                        <option disabled>No hay cuentas que coincidan con la búsqueda</option>
+                      }
+                    </select>
+                  </label>
+                  <label>
+                    <span class="mb-2 block font-bold uppercase text-slate-600">Cargo o área interna</span>
+                    <input [(ngModel)]="currentTutorFundacion.cargo" name="tutorFundacionCargo" maxlength="100" placeholder="Ej. Coordinador de proyecto" class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 outline-none focus:border-unibe-blue" />
+                  </label>
+                </div>
+
+                <fieldset>
+                  <legend class="mb-2 font-bold uppercase text-slate-600">Carreras que puede tutorizar *</legend>
+                  <div class="grid max-h-56 grid-cols-1 gap-2 overflow-y-auto rounded-lg border border-slate-200 p-2 sm:grid-cols-2 lg:grid-cols-3">
+                    @for (carrera of carrerasCatalogoActivas(); track carrera.id) {
+                      <label class="flex min-h-10 cursor-pointer items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 font-semibold text-slate-700">
+                        <input type="checkbox" [checked]="carreraTutorSeleccionada(carrera.id)" (change)="toggleCarreraTutor(carrera.id)" class="h-4 w-4 accent-unibe-blue" />
+                        <span>{{ carrera.nombre }}</span>
+                      </label>
+                    } @empty {
+                      <p class="col-span-full py-4 text-center text-slate-400">No hay carreras activas en el catálogo.</p>
+                    }
+                  </div>
+                </fieldset>
+
+                <label class="flex min-h-10 items-center gap-2 font-bold text-slate-700">
+                  <input type="checkbox" [(ngModel)]="currentTutorFundacion.activo" name="tutorFundacionActivo" class="h-4 w-4 accent-unibe-blue" />
+                  Vínculo activo
+                </label>
+
+                <footer class="flex flex-col-reverse gap-2 border-t border-slate-200 pt-4 sm:flex-row sm:justify-end">
+                  <button type="button" (click)="nuevoTutorFundacion()" class="min-h-10 rounded-lg border border-slate-200 bg-slate-100 px-4 font-bold text-slate-700 hover:bg-slate-200">Limpiar</button>
+                  <button type="submit" [disabled]="savingTutor()" class="min-h-10 rounded-lg bg-unibe-blue px-4 font-bold text-white hover:bg-unibe-blue-hover disabled:cursor-not-allowed disabled:opacity-60">
+                    {{ savingTutor() ? 'Guardando...' : 'Guardar tutor' }}
+                  </button>
+                </footer>
+              </form>
+            }
+          }
+        </div>
+      </section>
     </div>
   }
 </div>

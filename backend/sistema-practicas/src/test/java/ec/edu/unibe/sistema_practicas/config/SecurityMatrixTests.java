@@ -345,6 +345,11 @@ class SecurityMatrixTests {
                 .content("{}")
                 .with(user("c").roles("COORDINADOR")))
            .andExpect(status().isForbidden());
+        mvc.perform(post("/api/tutores-fundacion")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{}")
+                .with(user("c").roles("COORDINADOR")))
+           .andExpect(status().isForbidden());
         mvc.perform(post("/api/importaciones/estudiantes").with(user("c").roles("COORDINADOR")))
            .andExpect(status().isForbidden());
     }
@@ -923,6 +928,18 @@ class SecurityMatrixTests {
         mvc.perform(get("/api/tutores-empresa/empresa/1").with(user("t").roles("TUTOR")))
            .andExpect(status().isForbidden());
         mvc.perform(get("/api/tutores-empresa/empresa/2147483647").with(user("a").roles("ADMIN")))
+           .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void tutores_externos_de_fundacion_solo_son_consultables_por_gestion_y_configurables_por_admin() throws Exception {
+        mvc.perform(get("/api/tutores-fundacion/fundacion/1"))
+           .andExpect(status().is4xxClientError());
+        mvc.perform(get("/api/tutores-fundacion/fundacion/1").with(user("e").roles("ESTUDIANTE")))
+           .andExpect(status().isForbidden());
+        mvc.perform(get("/api/tutores-fundacion/fundacion/1").with(user("t").roles("TUTOR")))
+           .andExpect(status().isForbidden());
+        mvc.perform(get("/api/tutores-fundacion/fundacion/2147483647").with(user("a").roles("ADMIN")))
            .andExpect(status().isNotFound());
     }
 

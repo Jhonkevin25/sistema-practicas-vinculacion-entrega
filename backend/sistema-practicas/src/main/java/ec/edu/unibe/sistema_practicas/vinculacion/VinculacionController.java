@@ -383,7 +383,8 @@ public class VinculacionController {
                 proyecto.getFundacion(), estudiante.getCarrera(), periodo);
         cuposProyectoComponent.descontar(proyecto, estudiante.getCarrera());
         vinculacion.setEstudiante(estudiante);
-        vinculacion.setTutor(tutorAsignacionComponent.exigirValido(vinculacion.getTutor(), PROCESO));
+        vinculacion.setTutor(tutorAsignacionComponent.exigirValido(
+                vinculacion.getTutor(), PROCESO, proyecto.getFundacion(), estudiante.getCarrera()));
         vinculacion.setProyecto(proyecto);
         vinculacion.setFundacion(proyecto.getFundacion());
         vinculacion.setPeriodoAcademico(periodo.getCodigo());
@@ -619,7 +620,9 @@ public class VinculacionController {
                         vinculacion.setProyecto(details.getProyecto());
                     }
                     if (details.getTutor() != null) {
-                        vinculacion.setTutor(tutorAsignacionComponent.exigirValido(details.getTutor(), PROCESO));
+                        vinculacion.setTutor(tutorAsignacionComponent.exigirValido(
+                                details.getTutor(), PROCESO, vinculacion.getFundacion(),
+                                vinculacion.getEstudiante().getCarrera()));
                     }
                     if (details.getEncargado() != null) {
                         vinculacion.setEncargado(details.getEncargado());

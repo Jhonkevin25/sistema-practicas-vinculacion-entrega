@@ -37,6 +37,7 @@ import { TAMANO_PAGINA_DEFECTO } from '../../core/services/paginacion';
 import { AutocompleteComponent } from '../shared/autocomplete/autocomplete.component';
 import { CarreraService } from '../../core/services/carrera.service';
 import { ComentariosSeguimientoModalComponent } from '../shared/comentarios-seguimiento-modal/comentarios-seguimiento-modal';
+import { TutorFundacion, TutorFundacionService } from '../../core/services/tutor-fundacion.service';
 
 export function tieneVinculacionActiva(vinculaciones: Pick<Vinculacion, 'estado'>[]): boolean {
   return vinculaciones.some(vinculacion =>
@@ -77,6 +78,7 @@ export class VinculacionComponent {
   private readonly notaCoordinacionService = inject(NotaCoordinacionService);
   private readonly lineaTiempoService = inject(LineaTiempoService);
   private readonly carreraService = inject(CarreraService);
+  private readonly tutorFundacionService = inject(TutorFundacionService);
 
   loading = signal(true);
   isRefreshing = signal(false);
@@ -148,6 +150,14 @@ export class VinculacionComponent {
   postulaciones = signal<PostulacionVinculacion[]>([]);
   estudiantes = signal<Estudiante[]>([]);
   tutores = signal<Usuario[]>([]);
+  // Fase 55/paridad Empresas: el selector de tutor de la asignación directa y
+  // de edición del listado se filtra por fundación + carrera del estudiante,
+  // igual que en Prácticas con TutorEmpresaService (no se usa la lista plana
+  // de "tutores" para estas dos acciones puntuales).
+  tutoresCompatiblesDirecta = signal<TutorFundacion[]>([]);
+  cargandoTutoresDirecta = signal(false);
+  tutoresCompatiblesVinculacion = signal<Record<number, TutorFundacion[]>>({});
+  tutoresCompatiblesPostulacion = signal<Record<number, TutorFundacion[]>>({});
   bitacoras = signal<Bitacora[]>([]);
   procesandoBitacoraId = signal<number | null>(null);
   bitacoraEnCorreccion = signal<Bitacora | null>(null);
@@ -250,7 +260,9 @@ export class VinculacionComponent {
   }
 
   asignarTutor(vinc: Vinculacion, tutorId: number | null): void {
-    const tutor = this.tutores().find(t => t.id === Number(tutorId));
+    const vinculo = this.tutorCompatibleConVinculacion(vinc)
+      .find(item => item.tutorId === Number(tutorId));
+    const tutor = vinculo ? this.usuarioDesdeVinculoFundacion(vinculo) : undefined;
     if (!vinc.id || !tutor) return;
     this.vinculacionService.update(vinc.id, { ...vinc, tutor }).subscribe({
       next: () => {
@@ -259,6 +271,42 @@ export class VinculacionComponent {
       },
       error: (err) => this.toastService.error(err?.error?.error || 'No se pudo asignar el tutor.')
     });
+  }
+
+  // Tutores externos compatibles con la fundación y la carrera de esta
+  // vinculación (para el selector de edición del listado "Asignaciones")
+  tutorCompatibleConVinculacion(vinc: Vinculacion): TutorFundacion[] {
+    return vinc.id ? this.tutoresCompatiblesVinculacion()[vinc.id] || [] : [];
+  }
+
+  private cargarTutoresParaVinculaciones(vinculaciones: Vinculacion[]): void {
+    const configurables = vinculaciones.filter(vinculacion =>
+      vinculacion.id && vinculacion.fundacion?.id && vinculacion.estudiante?.carrera);
+    if (configurables.length === 0) {
+      this.tutoresCompatiblesVinculacion.set({});
+      return;
+    }
+
+    forkJoin(configurables.map(vinculacion =>
+      this.tutorFundacionService.getCompatibles(vinculacion.fundacion.id!, vinculacion.estudiante.carrera).pipe(
+        map(tutores => ({ vinculacionId: vinculacion.id!, tutores })),
+        catchError(() => of({ vinculacionId: vinculacion.id!, tutores: [] as TutorFundacion[] }))
+      )
+    )).subscribe(resultados => {
+      this.tutoresCompatiblesVinculacion.set(Object.fromEntries(
+        resultados.map(resultado => [resultado.vinculacionId, resultado.tutores])
+      ));
+    });
+  }
+
+  private usuarioDesdeVinculoFundacion(vinculo: TutorFundacion): Usuario | undefined {
+    if (!vinculo.tutorId) return undefined;
+    return {
+      id: vinculo.tutorId,
+      nombre: vinculo.nombre,
+      apellido: vinculo.apellido,
+      email: vinculo.email || ''
+    };
   }
 
   filtroTutorados = '';
@@ -449,6 +497,9 @@ export class VinculacionComponent {
         } else {
           this.postulaciones.set(res.postulaciones);
         }
+        if (esGestion) {
+          this.cargarTutoresPostulaciones();
+        }
         if (user.rol === 'ADMIN' || user.rol === 'COORDINADOR') {
           this.loadDocumentosRevision();
         }
@@ -464,6 +515,33 @@ export class VinculacionComponent {
 
   postulacionesPendientes(): PostulacionVinculacion[] {
     return this.postulaciones().filter(p => p.estado === 'Pendiente');
+  }
+
+  // El backend exige que el tutor asignado al aprobar una postulacion este
+  // vinculado a la fundacion del proyecto y cubra la carrera del estudiante
+  // (mismo patron que cargarTutoresMeritocracia() en practicas.ts)
+  private cargarTutoresPostulaciones(): void {
+    const configurables = this.postulacionesPendientes()
+      .filter(post => post.id && post.proyecto?.fundacion?.id && post.estudiante?.carrera);
+    if (configurables.length === 0) {
+      this.tutoresCompatiblesPostulacion.set({});
+      return;
+    }
+
+    forkJoin(configurables.map(post =>
+      this.tutorFundacionService.getCompatibles(post.proyecto.fundacion.id!, post.estudiante.carrera).pipe(
+        map(tutores => ({ postulacionId: post.id!, tutores })),
+        catchError(() => of({ postulacionId: post.id!, tutores: [] as TutorFundacion[] }))
+      )
+    )).subscribe(resultados => {
+      this.tutoresCompatiblesPostulacion.set(Object.fromEntries(
+        resultados.map(resultado => [resultado.postulacionId, resultado.tutores])
+      ));
+    });
+  }
+
+  tutoresCompatiblesConPostulacion(post: PostulacionVinculacion): TutorFundacion[] {
+    return post.id ? this.tutoresCompatiblesPostulacion()[post.id] || [] : [];
   }
 
   miPostulacionPendiente(): PostulacionVinculacion | undefined {
@@ -872,6 +950,42 @@ export class VinculacionComponent {
     });
   }
 
+  seleccionarEstudianteDirecto(estudiante: Estudiante | null): void {
+    this.selectedEstudianteObj = estudiante;
+    this.cargarTutoresDirecta();
+  }
+
+  seleccionarProyectoDirecto(proyecto: Proyecto | null): void {
+    this.selectedProyectoObj = proyecto;
+    this.cargarTutoresDirecta();
+  }
+
+  private cargarTutoresDirecta(tutorPreferidoId?: number): void {
+    const estudiante = this.selectedEstudianteObj
+      || this.estudiantes().find(item => item.id === Number(this.selectedEstudianteId));
+    const proyecto = this.selectedProyectoObj
+      || this.proyectos().find(item => item.id === Number(this.selectedProyectoId));
+    const fundacionId = proyecto?.fundacion?.id;
+    const carrera = estudiante?.carrera;
+
+    this.selectedTutorId = null;
+    this.tutoresCompatiblesDirecta.set([]);
+    if (!fundacionId || !carrera) return;
+
+    this.cargandoTutoresDirecta.set(true);
+    this.tutorFundacionService.getCompatibles(fundacionId, carrera).pipe(
+      finalize(() => this.cargandoTutoresDirecta.set(false))
+    ).subscribe({
+      next: tutores => {
+        this.tutoresCompatiblesDirecta.set(tutores);
+        if (tutorPreferidoId && tutores.some(item => item.tutorId === tutorPreferidoId)) {
+          this.selectedTutorId = tutorPreferidoId;
+        }
+      },
+      error: () => this.toastService.error('No se pudieron consultar los tutores compatibles con la fundación y la carrera.')
+    });
+  }
+
   saveDirectAssignment(): void {
     if (this.asignandoDirecta()) return;
     if (!this.selectedEstudianteId || !this.selectedProyectoId || !this.selectedTutorId) {
@@ -880,7 +994,9 @@ export class VinculacionComponent {
     }
     const est = this.selectedEstudianteObj || this.estudiantes().find(e => e.id === Number(this.selectedEstudianteId));
     const proj = this.selectedProyectoObj || this.proyectos().find(p => p.id === Number(this.selectedProyectoId));
-    const tutor = this.tutores().find(t => t.id === Number(this.selectedTutorId));
+    const vinculoTutor = this.tutoresCompatiblesDirecta()
+      .find(item => item.tutorId === Number(this.selectedTutorId));
+    const tutor = vinculoTutor ? this.usuarioDesdeVinculoFundacion(vinculoTutor) : undefined;
 
     if (!est || !proj || !tutor) return;
     if (!this.proyectoTieneConvenioVigente(proj, est.carrera)) {
@@ -907,6 +1023,7 @@ export class VinculacionComponent {
         this.selectedEstudianteId = null;
         this.selectedProyectoId = null;
         this.selectedTutorId = null;
+        this.tutoresCompatiblesDirecta.set([]);
         this.toastService.success('Asignación de Vinculación directa registrada con éxito.');
       },
       error: (err) => {
@@ -1071,6 +1188,7 @@ export class VinculacionComponent {
         this.totalElementosLista.set(pag.totalElementos);
         this.totalPaginasLista.set(pag.totalPaginas);
         this.cargandoLista.set(false);
+        this.cargarTutoresParaVinculaciones(pag.contenido);
       },
       error: () => this.cargandoLista.set(false)
     });

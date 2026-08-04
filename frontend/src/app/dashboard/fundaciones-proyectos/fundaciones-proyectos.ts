@@ -1,4 +1,4 @@
-import { Component, OnDestroy, inject, signal } from '@angular/core';
+import { Component, OnDestroy, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { FundacionService, Fundacion } from '../../core/services/fundacion.service';
@@ -18,6 +18,12 @@ import { ProyectoFormModalComponent } from '../shared/proyecto-form-modal/proyec
 import { TAMANO_PAGINA_DEFECTO } from '../../core/services/paginacion';
 import { PaginadorComponent } from '../shared/paginador/paginador';
 import { forkJoin, of } from 'rxjs';
+import { Usuario, UsuarioService } from '../../core/services/usuario.service';
+import {
+  TutorFundacion,
+  TutorFundacionPayload,
+  TutorFundacionService
+} from '../../core/services/tutor-fundacion.service';
 
 @Component({
   selector: 'app-fundaciones-proyectos',
@@ -36,6 +42,8 @@ export class FundacionesProyectosComponent implements OnDestroy {
   private readonly carreraService = inject(CarreraService);
   private readonly expedienteService = inject(ExpedienteService);
   private readonly ofertaCuposService = inject(OfertaCuposFundacionService);
+  private readonly usuarioService = inject(UsuarioService);
+  private readonly tutorFundacionService = inject(TutorFundacionService);
 
   readonly hoy = new Date().toISOString().split('T')[0];
 
@@ -49,6 +57,9 @@ export class FundacionesProyectosComponent implements OnDestroy {
   guardandoFundacion = signal(false);
   guardandoConvenio = signal(false);
   guardandoOferta = signal(false);
+  showTutoresModal = signal(false);
+  loadingTutores = signal(false);
+  savingTutor = signal(false);
 
   // Fase 43: paginación y filtros del listado de fundaciones (backend)
   readonly tamanoPagina = TAMANO_PAGINA_DEFECTO;
@@ -84,6 +95,30 @@ export class FundacionesProyectosComponent implements OnDestroy {
   carrerasSeleccionadas: string[] = [];
   selectedFundacionOferta = signal<Fundacion | null>(null);
   currentOferta: OfertaCuposFundacion = this.emptyOferta();
+  selectedFundacionTutor = signal<Fundacion | null>(null);
+  tutoresFundacion = signal<TutorFundacion[]>([]);
+  candidatosTutor = signal<Usuario[]>([]);
+  filtroTutorTexto = signal('');
+  filtroTutorCarrera = signal('TODOS');
+  busquedaCuentaTutor = signal('');
+  currentTutorFundacion: TutorFundacionPayload & { id?: number } = this.emptyTutorFundacion();
+
+  carrerasFiltroTutores = computed(() => [...new Set(
+    this.tutoresFundacion().flatMap(vinculo => vinculo.carreras.map(carrera => carrera.nombre))
+  )].sort((a, b) => a.localeCompare(b, 'es')));
+
+  tutoresFundacionFiltrados = computed(() => {
+    const termino = this.normalizar(this.filtroTutorTexto());
+    const carrera = this.filtroTutorCarrera();
+    return this.tutoresFundacion().filter(vinculo => {
+      const coincideTexto = !termino || this.normalizar(
+        `${vinculo.nombre} ${vinculo.apellido} ${vinculo.email || ''} ${vinculo.cargo || ''}`
+      ).includes(termino);
+      const coincideCarrera = carrera === 'TODOS'
+        || vinculo.carreras.some(item => item.nombre === carrera);
+      return coincideTexto && coincideCarrera;
+    });
+  });
 
   constructor() {
     this.loadData(true);
@@ -315,6 +350,138 @@ export class FundacionesProyectosComponent implements OnDestroy {
 
   isAdmin(): boolean {
     return this.authService.getRole() === 'ADMIN';
+  }
+
+  openTutores(fundacion: Fundacion): void {
+    if (!fundacion.id) return;
+    this.selectedFundacionTutor.set(fundacion);
+    this.showTutoresModal.set(true);
+    this.loadingTutores.set(true);
+    this.limpiarFiltrosTutores();
+    this.currentTutorFundacion = this.emptyTutorFundacion(fundacion.id);
+    forkJoin({
+      vinculos: this.tutorFundacionService.getPorFundacion(fundacion.id),
+      candidatos: this.isAdmin() ? this.usuarioService.getTutores() : of([] as Usuario[])
+    }).subscribe({
+      next: ({ vinculos, candidatos }) => {
+        this.tutoresFundacion.set(vinculos);
+        this.candidatosTutor.set(candidatos.filter(usuario => {
+          const tipo = String(usuario.tutorTipo || '').toUpperCase();
+          return usuario.activo !== false && (tipo === 'VINCULACION' || tipo === 'AMBOS');
+        }));
+        this.loadingTutores.set(false);
+      },
+      error: err => {
+        this.loadingTutores.set(false);
+        this.toastService.error(err?.error?.error || 'No se pudieron cargar los tutores de la fundación.');
+      }
+    });
+  }
+
+  closeTutores(): void {
+    this.showTutoresModal.set(false);
+    this.selectedFundacionTutor.set(null);
+    this.tutoresFundacion.set([]);
+    this.candidatosTutor.set([]);
+    this.limpiarFiltrosTutores();
+    this.currentTutorFundacion = this.emptyTutorFundacion();
+  }
+
+  nuevoTutorFundacion(): void {
+    this.currentTutorFundacion = this.emptyTutorFundacion(this.selectedFundacionTutor()?.id);
+    this.busquedaCuentaTutor.set('');
+  }
+
+  editarTutorFundacion(vinculo: TutorFundacion): void {
+    this.currentTutorFundacion = {
+      id: vinculo.id,
+      tutorId: vinculo.tutorId,
+      fundacionId: vinculo.fundacionId,
+      cargo: vinculo.cargo || '',
+      activo: vinculo.activo,
+      carreraIds: vinculo.carreras.map(carrera => carrera.id)
+    };
+  }
+
+  tutoresCandidatosDisponibles(): Usuario[] {
+    const ocupados = new Set(this.tutoresFundacion()
+      .filter(vinculo => vinculo.id !== this.currentTutorFundacion.id)
+      .map(vinculo => vinculo.tutorId));
+    const termino = this.normalizar(this.busquedaCuentaTutor());
+    return this.candidatosTutor().filter(usuario => {
+      if (usuario.id == null || ocupados.has(usuario.id)) return false;
+      if (usuario.id === this.currentTutorFundacion.tutorId) return true;
+      return !termino || this.normalizar(
+        `${usuario.nombre} ${usuario.apellido} ${usuario.email}`
+      ).includes(termino);
+    });
+  }
+
+  limpiarFiltrosTutores(): void {
+    this.filtroTutorTexto.set('');
+    this.filtroTutorCarrera.set('TODOS');
+    this.busquedaCuentaTutor.set('');
+  }
+
+  carreraTutorSeleccionada(carreraId?: number): boolean {
+    return carreraId != null && this.currentTutorFundacion.carreraIds.includes(carreraId);
+  }
+
+  toggleCarreraTutor(carreraId?: number): void {
+    if (carreraId == null) return;
+    this.currentTutorFundacion.carreraIds = this.carreraTutorSeleccionada(carreraId)
+      ? this.currentTutorFundacion.carreraIds.filter(id => id !== carreraId)
+      : [...this.currentTutorFundacion.carreraIds, carreraId];
+  }
+
+  saveTutorFundacion(): void {
+    const fundacionId = this.selectedFundacionTutor()?.id;
+    if (!fundacionId || !this.currentTutorFundacion.tutorId) {
+      this.toastService.warning('Selecciona una cuenta de tutor externo.');
+      return;
+    }
+    if (this.currentTutorFundacion.carreraIds.length === 0) {
+      this.toastService.warning('Selecciona al menos una carrera para el tutor.');
+      return;
+    }
+    const payload: TutorFundacionPayload = {
+      ...this.currentTutorFundacion,
+      fundacionId
+    };
+    const request = this.currentTutorFundacion.id
+      ? this.tutorFundacionService.update(this.currentTutorFundacion.id, payload)
+      : this.tutorFundacionService.create(payload);
+    this.savingTutor.set(true);
+    request.subscribe({
+      next: guardado => {
+        this.tutoresFundacion.update(actuales => {
+          const existe = actuales.some(item => item.id === guardado.id);
+          return existe
+            ? actuales.map(item => item.id === guardado.id ? guardado : item)
+            : [...actuales, guardado].sort((a, b) => `${a.nombre} ${a.apellido}`.localeCompare(`${b.nombre} ${b.apellido}`));
+        });
+        this.currentTutorFundacion = this.emptyTutorFundacion(fundacionId);
+        this.savingTutor.set(false);
+        this.toastService.success('Tutor externo vinculado con la fundación y sus carreras.');
+      },
+      error: err => {
+        this.savingTutor.set(false);
+        this.toastService.error(err?.error?.error || 'No se pudo guardar el tutor externo.');
+      }
+    });
+  }
+
+  async deleteTutorFundacion(vinculo: TutorFundacion): Promise<void> {
+    if (!(await this.confirmService.confirm(
+      `¿Eliminar el vínculo de ${vinculo.nombre} ${vinculo.apellido} con esta fundación?`))) return;
+    this.tutorFundacionService.delete(vinculo.id).subscribe({
+      next: () => {
+        this.tutoresFundacion.update(actuales => actuales.filter(item => item.id !== vinculo.id));
+        if (this.currentTutorFundacion.id === vinculo.id) this.nuevoTutorFundacion();
+        this.toastService.success('Vínculo del tutor eliminado.');
+      },
+      error: err => this.toastService.error(err?.error?.error || 'No se pudo eliminar el vínculo del tutor.')
+    });
   }
 
   openOferta(fundacion: Fundacion): void {
@@ -560,5 +727,19 @@ export class FundacionesProyectosComponent implements OnDestroy {
       cuposPactados: 0,
       carreras: []
     };
+  }
+
+  private emptyTutorFundacion(fundacionId?: number): TutorFundacionPayload & { id?: number } {
+    return {
+      tutorId: null,
+      fundacionId: fundacionId || null,
+      cargo: '',
+      activo: true,
+      carreraIds: []
+    };
+  }
+
+  private normalizar(valor: string): string {
+    return valor.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
   }
 }

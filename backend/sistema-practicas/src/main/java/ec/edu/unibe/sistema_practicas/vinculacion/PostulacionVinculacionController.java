@@ -150,7 +150,6 @@ public class PostulacionVinculacionController {
         Estudiante estudiante = estudianteRepository.findByIdForUpdate(postulacion.getEstudiante().getId())
                 .orElseThrow(() -> new IllegalArgumentException("El estudiante no existe."));
         validarSinProcesoActivo(estudiante.getId());
-        Usuario tutor = tutorAsignacionComponent.exigirValido(request.getTutor(), PROCESO);
         Proyecto proyecto = proyectoRepository.findByIdForUpdate(postulacion.getProyecto().getId())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Proyecto no encontrado."));
         PeriodoAcademico periodo = periodoComponent.exigirActivo(postulacion.getPeriodoAcademico());
@@ -158,6 +157,8 @@ public class PostulacionVinculacionController {
             throw new IllegalArgumentException(
                     "La postulación y el proyecto no pertenecen al mismo periodo académico.");
         }
+        Usuario tutor = tutorAsignacionComponent.exigirValido(
+                request.getTutor(), PROCESO, proyecto.getFundacion(), estudiante.getCarrera());
         convenioVigenteComponent.exigirParaFundacionEnPeriodo(
                 proyecto.getFundacion(), estudiante.getCarrera(), periodo);
         cuposProyectoComponent.descontar(proyecto, estudiante.getCarrera());

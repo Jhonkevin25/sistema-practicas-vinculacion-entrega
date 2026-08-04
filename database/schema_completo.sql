@@ -4656,3 +4656,39 @@ BEGIN
         ));
     END IF;
 END $$;
+
+-- ============================================================================
+-- FASE 55: TUTORES EXTERNOS POR FUNDACION Y CARRERA
+-- Fuente: database/migraciones/fase55_tutores_externos_fundacion.sql
+-- ============================================================================
+
+CREATE TABLE IF NOT EXISTS TUTORES_FUNDACION (
+    id SERIAL PRIMARY KEY,
+    fundacion_id INT NOT NULL REFERENCES FUNDACIONES(id) ON DELETE RESTRICT,
+    usuario_id INT REFERENCES USUARIOS(id) ON DELETE RESTRICT,
+    nombre VARCHAR(200) NOT NULL,
+    cargo VARCHAR(100),
+    activo BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS ux_tutores_fundacion_usuario_fundacion
+    ON TUTORES_FUNDACION(usuario_id, fundacion_id)
+    WHERE usuario_id IS NOT NULL;
+
+CREATE INDEX IF NOT EXISTS idx_tutores_fundacion_fundacion_activo
+    ON TUTORES_FUNDACION(fundacion_id, activo);
+
+CREATE INDEX IF NOT EXISTS idx_tutores_fundacion_usuario_activo
+    ON TUTORES_FUNDACION(usuario_id, activo)
+    WHERE usuario_id IS NOT NULL;
+
+CREATE TABLE IF NOT EXISTS TUTORES_FUNDACION_CARRERAS (
+    tutor_fundacion_id INT NOT NULL REFERENCES TUTORES_FUNDACION(id) ON DELETE CASCADE,
+    carrera_id INT NOT NULL REFERENCES CARRERAS(id) ON DELETE RESTRICT,
+    PRIMARY KEY (tutor_fundacion_id, carrera_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_tutores_fundacion_carreras_carrera
+    ON TUTORES_FUNDACION_CARRERAS(carrera_id, tutor_fundacion_id);

@@ -1,8 +1,11 @@
 package ec.edu.unibe.sistema_practicas.usuario;
 
 import ec.edu.unibe.sistema_practicas.empresa.Empresa;
+import ec.edu.unibe.sistema_practicas.fundacion.Fundacion;
 import ec.edu.unibe.sistema_practicas.tutorempresa.TutorEmpresa;
 import ec.edu.unibe.sistema_practicas.tutorempresa.TutorEmpresaRepository;
+import ec.edu.unibe.sistema_practicas.tutorfundacion.TutorFundacion;
+import ec.edu.unibe.sistema_practicas.tutorfundacion.TutorFundacionRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -16,6 +19,7 @@ public class TutorAsignacionComponent {
 
     private final UsuarioRepository usuarioRepository;
     private final TutorEmpresaRepository tutorEmpresaRepository;
+    private final TutorFundacionRepository tutorFundacionRepository;
 
     public Usuario exigirValido(Usuario referencia, String proceso) {
         if (referencia == null || referencia.getId() == null) {
@@ -59,6 +63,30 @@ public class TutorAsignacionComponent {
         if (!carreraCubierta) {
             throw new IllegalArgumentException(
                     "El tutor no está habilitado para la carrera de la vacante en esta empresa.");
+        }
+        return tutor;
+    }
+
+    public Usuario exigirValido(Usuario referencia, String proceso, Fundacion fundacion, String carrera) {
+        Usuario tutor = exigirValido(referencia, proceso);
+        if (!"VINCULACION".equals(normalizar(proceso))) return tutor;
+        if (fundacion == null || fundacion.getId() == null) {
+            throw new IllegalArgumentException("La vinculación debe indicar la fundación del proyecto.");
+        }
+        if (carrera == null || carrera.isBlank()) {
+            throw new IllegalArgumentException("La vinculación debe indicar la carrera del estudiante.");
+        }
+        TutorFundacion vinculo = tutorFundacionRepository.findByUsuarioIdAndFundacionId(tutor.getId(), fundacion.getId())
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "El tutor no está vinculado con la fundación del proyecto."));
+        if (!Boolean.TRUE.equals(vinculo.getActivo())) {
+            throw new IllegalArgumentException("El vínculo del tutor con la fundación está inactivo.");
+        }
+        boolean carreraCubierta = vinculo.getCarreras() != null && vinculo.getCarreras().stream()
+                .anyMatch(item -> mismaCarrera(item.getNombre(), carrera));
+        if (!carreraCubierta) {
+            throw new IllegalArgumentException(
+                    "El tutor no está habilitado para la carrera del proyecto en esta fundación.");
         }
         return tutor;
     }

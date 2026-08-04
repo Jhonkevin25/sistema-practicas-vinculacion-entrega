@@ -38,6 +38,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyMap;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.when;
@@ -150,7 +151,9 @@ class VinculacionControllerFlujoTests {
         when(practicaRepository.findByEstudianteId(8)).thenReturn(List.of());
         when(proyectoRepository.findByIdForUpdate(30)).thenReturn(Optional.of(proyecto));
         when(estudianteRepository.findByIdForUpdate(8)).thenReturn(Optional.of(estudiante));
-        when(tutorAsignacionComponent.exigirValido(tutor, "VINCULACION")).thenReturn(tutor);
+        when(tutorAsignacionComponent.exigirValido(
+                eq(tutor), eq("VINCULACION"), any(ec.edu.unibe.sistema_practicas.fundacion.Fundacion.class), eq("Derecho")))
+                .thenReturn(tutor);
         when(periodoComponent.exigirActivo("2026-2")).thenReturn(periodo);
         when(vinculacionRepository.save(any(Vinculacion.class))).thenAnswer(inv -> {
             Vinculacion guardada = inv.getArgument(0);

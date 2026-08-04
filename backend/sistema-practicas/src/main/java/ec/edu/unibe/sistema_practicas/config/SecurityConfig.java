@@ -112,6 +112,14 @@ public class SecurityConfig {
                         "/api/tutores-empresa", "/api/tutores-empresa/**")
                     .hasRole(ADMIN)
 
+                // Espejo para Vinculación: tutores externos por fundación/carrera.
+                .requestMatchers(HttpMethod.GET,
+                        "/api/tutores-fundacion", "/api/tutores-fundacion/**")
+                    .hasAnyRole(ADMIN, COORDINADOR)
+                .requestMatchers(
+                        "/api/tutores-fundacion", "/api/tutores-fundacion/**")
+                    .hasRole(ADMIN)
+
                 // La capacidad de fundaciones sigue la misma regla: gestion
                 // consulta y solo ADMIN configura cupos por periodo/carrera.
                 .requestMatchers(HttpMethod.GET,
